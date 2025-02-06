@@ -33,6 +33,7 @@ public:
     void setUserName(const std::string &user);
     void setHostName(const std::string &host);
     void setRealName(const std::string &real);
+    void handleUserInput();
     void authenticate();
 
     void appendToBuffer(const std::string &data);
@@ -54,6 +55,7 @@ public:
                              const std::string &targetNick,
                              std::map<std::string, Client> &members,
                              const std::string &channelName, char sign);
+    void handleServerResponse();
 };
 
 #endif
