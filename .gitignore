@@ -1,0 +1,4 @@
+client
+.vscode
+*.o
+ircserv
