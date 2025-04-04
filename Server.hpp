@@ -6,6 +6,7 @@
 #include <iostream>
 #include <regex>
 #include <sstream>
+#include <stdexcept>  // For std::runtime_error
 #include <string>
 #include <vector>
 
@@ -42,6 +43,17 @@ public:
     void registerUser(Client& client, std::string arg);
     void authenticate(Client& client, std::string arg, size_t* clientIndex);
     void registerClient(int clientFd, std::string arg, size_t* clientIndex);
+
+    // NICK
+    size_t getClientIndex(int clientFd);
+    void broadcastAndUpdateNickname(int clientFd, size_t clientIndex,
+                                    const std::string& newNick);
+    void sendError(int clientFd, const std::string& errorCode,
+                   const std::string& nick, const std::string& details);
+    // void validateNick(int clientFd, std::string newNick);
+
+    void validateNick(int clientFd, const std::string& newNick);
+    void nick(int clientFd, std::string arg);
 
     std::string getPassword() const { return _password; }
     int getPort() const { return _port; }
