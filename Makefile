@@ -3,7 +3,7 @@ NAME := ircserv
 CC := c++
 FLAGS := -std=c++17 -Wall -Wextra -Werror
 
-SOURCES := Channel.cpp nick.cpp main_test_channel.cpp Server.cpp Client.cpp clientRegistration.cpp
+SOURCES := join.cpp Channel.cpp nick.cpp main_test_join.cpp Server.cpp Client.cpp clientRegistration.cpp
 OBJECTS := $(SOURCES:.cpp=.o)
 HEADERS := Server.hpp Client.hpp Channel.hpp
 
