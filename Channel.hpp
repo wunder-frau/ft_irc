@@ -1,42 +1,79 @@
-#pragma once
+#ifndef CHANNEL_HPP
+#define CHANNEL_HPP
+
 #include <string>
+#include <iostream>
 #include <vector>
+#include <map>
+
+#include "Client.hpp"
 
 class Channel {
-private:
-    std::string _name;
-    std::string _key;
-    bool _inviteOnly;
-    int _clientLimit;
-    std::string _topic;
-    std::vector<int> _jointClients;
-    std::vector<int> _ops;
-    std::vector<int> _invitedClients;
-
 public:
+    // Default constructor
     Channel();
-    Channel(const std::string& name, int creatorFd,
-            const std::string& key = "");
-    ~Channel();
+
+    // Parameterized constructor: creates a channel with a given name.
+    Channel(const std::string& name);
+
+    // Copy constructor (orthodox canonical form)
     Channel(const Channel& other);
+
+    // Copy assignment operator (orthodox canonical form)
     Channel& operator=(const Channel& other);
 
-    std::string getChannelName() const;
-    std::string getKey() const;
+    // Destructor (orthodox canonical form)
+    ~Channel();
+
+    // Getter for the channel name.
+    const std::string& getName() const;
+
+    // Topic management
+    void setTopic(const std::string& topic);
+    const std::string& getTopic() const;
+
+    // Invite management
+    void setInviteOnly(bool inviteOnly);
     bool isInviteOnly() const;
-    int getClientLimit() const;
-    std::string getTopic() const;
+    bool isInvited(const std::string& nickname) const;
+    void addInvited(const std::string& nickname);
 
-    // Return references so they can be modified by the server code.
-    std::vector<int>& getJointClients();
-    std::vector<int>& getOps();
-    std::vector<int>& getInvitedClients();
+    // Add a client to the channel.
+    // If this is the first client, they become the operator.
+    void addClient(Client* client);
 
-    // Methods to modify channel state:
-    void addClient(int clientFd);
-    void addOp(int clientFd);
-    void removeInvite(int clientFd);
+    // Remove a client from the channel.
+    // If the client was the operator, reassign operator to another client if available.
+    void removeClient(Client* client);
 
-    // Broadcast a message to all clients in the channel.
-    void broadcast(const std::string& msg, int senderFd, bool includeSender);
+    // Check if the given client is the channel operator.
+    bool isOperator(Client* client) const;
+
+    // Check if client is in channel
+    bool isInChannel(Client* client) const;
+
+    // Kick a target client from the channel.
+    // Only works if 'sender' is the operator.
+    // Returns true if the kick was successful.
+    bool kick(Client* sender, Client* target);
+
+    // Broadcast a message to all clients in the channel
+    void broadcast(const std::string& message, Client* except = nullptr);
+
+    // Get list of clients in the channel
+    std::vector<Client*> getClients() const;
+
+private:
+    std::string _name;
+    std::string _topic;
+    bool _inviteOnly;
+    
+    // Using vector for better memory management
+    std::vector<Client*> _clients;
+    Client* _operator;  // Pointer to the current channel operator.
+    
+    // Keep track of invited users (for invite-only channels)
+    std::map<std::string, bool> _invited;
 };
+
+#endif // CHANNEL_HPP

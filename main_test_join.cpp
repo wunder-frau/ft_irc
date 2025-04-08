@@ -33,7 +33,7 @@ int main() {
         // Command: "JOIN #test"
         std::string joinCmd1 = "JOIN #test";
         std::cout << "\nProcessing join command: " << joinCmd1 << std::endl;
-        server.join(1, joinCmd1);
+        server.handleJoin(1, joinCmd1);
 
         // --- Test 2: Join multiple channels with keys ---
         // Command: "JOIN #test,#random secret123,secret456"
@@ -42,7 +42,7 @@ int main() {
         //  - For channel "#random", the key "secret456" is provided.
         std::string joinCmd2 = "JOIN #test,#random secret123,secret456";
         std::cout << "\nProcessing join command: " << joinCmd2 << std::endl;
-        server.join(1, joinCmd2);
+        server.handleJoin(1, joinCmd2);
 
         // Optionally, add more tests or print additional server/channel status
         // here.

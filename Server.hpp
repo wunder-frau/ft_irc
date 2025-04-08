@@ -1,6 +1,11 @@
 #pragma once
 
-#include <sys/socket.h>  // for send()
+#ifdef _WIN32
+    #include <winsock2.h>
+    #include <ws2tcpip.h>
+#else
+    #include <sys/socket.h>
+#endif
 
 #include <cstring>  // for memset
 #include <iostream>
@@ -97,6 +102,21 @@ public:
     void sendClientError(int clientFd, const std::string& errorCode,
                          const std::string& details);
     void join(int clientFd, std::string arg);
+
+    // Channel-related methods (From your implementation)
+    Channel* findChannel(const std::string& name);
+    bool channelExists(const std::string& name);
+    void createChannel(const std::string& name, Client* creator);
+    void removeEmptyChannels();
+    void removeClientFromChannels(int clientFd);
+
+    // Channel commands (From your implementation)
+    void handleJoin(int clientFd, const std::string& arg);
+    void handlePart(int clientFd, const std::string& arg);
+    void handleInvite(int clientFd, const std::string& arg);
+    void handleKick(int clientFd, const std::string& arg);
+    void handleTopic(int clientFd, const std::string& arg);
+    void handleMode(int clientFd, const std::string& arg);
 
     // GETTERS
     std::string getPassword() const { return _password; }

@@ -1,12 +1,23 @@
 #include "Server.hpp"
 
 Server::Server(int port, std::string password)
-    : _port(port), _password(password) {}
+    : _port(port), _password(password) {
+#ifdef _WIN32
+    WSADATA wsaData;
+    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+        throw std::runtime_error("WSAStartup failed");
+    }
+#endif
+}
 
 Server::Server(const Server& other)
     : _port(other.getPort()), _password(other.getPassword()) {}
 
-Server::~Server() {}
+Server::~Server() {
+#ifdef _WIN32
+    WSACleanup();
+#endif
+}
 
 Server& Server::operator=(const Server& other) {
     if (this != &other) {
@@ -31,34 +42,27 @@ void Server::parser(std::string arg, std::vector<std::string>& params,
 void Server::eraseClient(int clientFd, size_t* clientIndex) {
     (void)clientIndex;
     std::cout << "Erasing client with FD " << clientFd << std::endl;
-    // TODO:
-    //
-    // 1. Retrieve the client index:
-    //    - Implement getClientIndex(clientFd) to iterate through _clients and
-    //    return the index of the client with the given file descriptor.
-    //    - If no client is found, return -1.
-    //
-    // 2. Remove the client from channels:
-    //    - Call removeClientFromChannels(clientFd) to remove the client from
-    //    every channel's list of active users and operators.
-    //
-    // 3. Remove the client from the _clients vector:
-    //    - Use the index from step 1 to erase the client from _clients.
-    //
-    // 4. Update the pollfd vector (_fds):
-    //    - Remove the corresponding pollfd entry for the client using
-    //    clientIndex.
-    //
-    // 5. Close the client's socket:
-    //    - Call close(clientFd) to properly close the socket and free up
-    //    resources.
-    //
-    // 6. Remove any dead channels:
-    //    - Implement removeDeadChannels() to iterate over _channels and remove
-    //    channels that no longer have any active clients.
-    //
-    // 7. Update the client index:
-    //    - Decrement *clientIndex to reflect the removal of the client.
+
+    // Remove client from all channels
+    removeClientFromChannels(clientFd);
+    
+    // Find the client index
+    size_t index = 0;
+    for (auto it = _clients.begin(); it != _clients.end(); ++it, ++index) {
+        if (it->getFd() == clientFd) {
+            // Remove the client from _clients vector
+            _clients.erase(it);
+            
+            // Update the client index
+            if (clientIndex)
+                (*clientIndex)--;
+                
+            break;
+        }
+    }
+    
+    // Remove empty channels
+    removeEmptyChannels();
 }
 
 // Check if the client with file descriptor 'clientFd' is registered.

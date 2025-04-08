@@ -1,88 +1,165 @@
 #include "Channel.hpp"
+#include "Client.hpp"
 
 #include <algorithm>  // for std::find and std::remove
 #include <iostream>
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#else
+#include <sys/socket.h>
+#endif
 
 Channel::Channel()
-    : _name(""), _key(""), _inviteOnly(false), _clientLimit(-1), _topic("") {}
-Channel::Channel(const std::string& name, int creatorFd, const std::string& key)
-    : _name(name), _key(key), _inviteOnly(false), _clientLimit(-1), _topic("") {
-    // When a channel is created, the file descriptor representing the creator
-    // is added to both lists, ensuring that the creator is both an operator and
-    // a member of the channel from the start.
-    _ops.push_back(creatorFd);
-    _jointClients.push_back(creatorFd);
+    : _name(""), _topic(""), _inviteOnly(false), _operator(nullptr)
+{
 }
 
-Channel::~Channel() {}
+Channel::Channel(const std::string& name)
+    : _name(name), _topic(""), _inviteOnly(false), _operator(nullptr)
+{
+}
+
+Channel::~Channel()
+{
+    // No need to deallocate with vector
+}
 
 Channel::Channel(const Channel& other)
     : _name(other._name),
-      _key(other._key),
-      _inviteOnly(other._inviteOnly),
-      _clientLimit(other._clientLimit),
       _topic(other._topic),
-      _jointClients(other._jointClients),
-      _ops(other._ops),
-      _invitedClients(other._invitedClients) {}
+      _inviteOnly(other._inviteOnly),
+      _clients(other._clients),
+      _operator(other._operator),
+      _invited(other._invited)
+{
+}
 
-Channel& Channel::operator=(const Channel& other) {
+Channel& Channel::operator=(const Channel& other)
+{
     if (this != &other) {
         _name = other._name;
-        _key = other._key;
-        _inviteOnly = other._inviteOnly;
-        _clientLimit = other._clientLimit;
         _topic = other._topic;
-        _jointClients = other._jointClients;
-        _ops = other._ops;
-        _invitedClients = other._invitedClients;
+        _inviteOnly = other._inviteOnly;
+        _clients = other._clients;
+        _operator = other._operator;
+        _invited = other._invited;
     }
     return *this;
 }
 
-std::string Channel::getChannelName() const { return _name; }
-
-std::string Channel::getKey() const { return _key; }
-
-bool Channel::isInviteOnly() const { return _inviteOnly; }
-
-int Channel::getClientLimit() const { return _clientLimit; }
-
-std::string Channel::getTopic() const { return _topic; }
-
-// Return references for modification
-std::vector<int>& Channel::getJointClients() { return _jointClients; }
-
-std::vector<int>& Channel::getOps() { return _ops; }
-
-std::vector<int>& Channel::getInvitedClients() { return _invitedClients; }
-
-// Methods to modify channel state
-void Channel::addClient(int clientFd) {
-    // Add client FD to the list of joined clients.
-    _jointClients.push_back(clientFd);
+const std::string& Channel::getName() const
+{
+    return _name;
 }
 
-void Channel::addOp(int clientFd) {
-    // Add client FD to operators if not already present.
-    if (std::find(_ops.begin(), _ops.end(), clientFd) == _ops.end()) {
-        _ops.push_back(clientFd);
+void Channel::setTopic(const std::string& topic)
+{
+    _topic = topic;
+}
+
+const std::string& Channel::getTopic() const
+{
+    return _topic;
+}
+
+void Channel::setInviteOnly(bool inviteOnly)
+{
+    _inviteOnly = inviteOnly;
+}
+
+bool Channel::isInviteOnly() const
+{
+    return _inviteOnly;
+}
+
+bool Channel::isInvited(const std::string& nickname) const
+{
+    return _invited.find(nickname) != _invited.end();
+}
+
+void Channel::addInvited(const std::string& nickname)
+{
+    _invited[nickname] = true;
+}
+
+// Add a client to the channel.
+// The first client becomes the channel operator.
+void Channel::addClient(Client* client)
+{
+    if (client == nullptr)
+        return;
+
+    // Check if client is already in the channel
+    if (isInChannel(client))
+        return;
+
+    _clients.push_back(client);
+
+    // If no operator is assigned, make this client the operator.
+    if (_operator == nullptr)
+        _operator = client;
+}
+
+// Remove a client from the channel.
+// If the client is the operator, assign a new operator if possible.
+void Channel::removeClient(Client* client)
+{
+    if (client == nullptr)
+        return;
+
+    // Find and remove the client
+    auto it = std::find(_clients.begin(), _clients.end(), client);
+    if (it != _clients.end()) {
+        _clients.erase(it);
+        
+        // If the removed client was the operator, reassign the operator.
+        if (_operator == client) {
+            _operator = _clients.empty() ? nullptr : _clients[0];
+        }
     }
 }
 
-void Channel::removeInvite(int clientFd) {
-    // Remove the client FD from the invited clients list.
-    _invitedClients.erase(
-        std::remove(_invitedClients.begin(), _invitedClients.end(), clientFd),
-        _invitedClients.end());
+bool Channel::isOperator(Client* client) const
+{
+    return client == _operator;
 }
 
-// Broadcast a message to all clients in the channel.
-// For this minimal implementation, we simply print the message to the console.
-void Channel::broadcast(const std::string& msg, int senderFd,
-                        bool includeSender) {
-    (void)includeSender;
-    std::cout << "Broadcasting in channel \"" << _name << "\" from sender FD "
-              << senderFd << ":\n"
-              << msg << std::endl;
+bool Channel::isInChannel(Client* client) const
+{
+    return std::find(_clients.begin(), _clients.end(), client) != _clients.end();
+}
+
+// KICK command:
+// Only the operator (sender) can kick a target from the channel.
+bool Channel::kick(Client* sender, Client* target)
+{
+    if (sender == nullptr || target == nullptr)
+        return false;
+
+    // Verify that the sender is the operator.
+    if (!isOperator(sender))
+        return false;
+
+    // Ensure that the target is actually in the channel.
+    if (!isInChannel(target))
+        return false;
+
+    removeClient(target);
+    std::cout << "Kicked " << target->getNick() << " from " << _name << std::endl;
+    return true;
+}
+
+void Channel::broadcast(const std::string& message, Client* except)
+{
+    for (Client* client : _clients) {
+        if (client != except) {
+            send(client->getFd(), message.c_str(), message.length(), 0);
+        }
+    }
+}
+
+std::vector<Client*> Channel::getClients() const
+{
+    return _clients;
 }
