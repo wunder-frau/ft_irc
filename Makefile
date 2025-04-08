@@ -1,4 +1,5 @@
 NAME := ircserv
+TEST := test_channels
 
 CC := c++
 FLAGS := -std=c++17 -Wall -Wextra -Werror
@@ -16,19 +17,26 @@ SOURCES := Channel.cpp nick.cpp main_test_join.cpp Server.cpp Client.cpp clientR
 OBJECTS := $(SOURCES:.cpp=.o)
 HEADERS := Server.hpp Client.hpp Channel.hpp
 
+# Test sources
+TEST_SOURCES := Channel.cpp Server.cpp Client.cpp clientRegistration.cpp ServerChannel.cpp nick.cpp test_channels.cpp
+TEST_OBJECTS := $(TEST_SOURCES:.cpp=.o)
+
 all: $(NAME)
 
 $(NAME): $(OBJECTS)
 		$(CC) $(FLAGS) $(OBJECTS) -o $(NAME) $(LIBS)
 
+$(TEST): $(TEST_OBJECTS)
+		$(CC) $(FLAGS) $(TEST_OBJECTS) -o $(TEST) $(LIBS)
+
 %.o: %.cpp $(HEADERS)
 		$(CC) $(FLAGS) -c $< -o $@
 
 clean:
-		rm -f $(OBJECTS)
+		rm -f $(OBJECTS) $(TEST_OBJECTS)
 
 fclean: clean
-		rm -f $(NAME)
+		rm -f $(NAME) $(TEST)
 
 re: fclean all
 
