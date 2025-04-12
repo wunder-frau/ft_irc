@@ -1,64 +1,53 @@
 #pragma once
 
-#include <sys/socket.h>  // for send()
-
-#include <cstring>  // for memset
-#include <iostream>
-#include <regex>
-#include <sstream>
-#include <stdexcept>  // For std::runtime_error
 #include <string>
 #include <vector>
+#include <poll.h>
 
 #include "Client.hpp"
+#include "Channel.hpp"
 
-class Server {
-private:
-    int _port;
-    std::string _password;
-    std::vector<Client> _clients;
-
-    void parser(std::string arg, std::vector<std::string>& params, char del);
-    void eraseClient(int clientFd, size_t* clientIndex);
-
-    // Regex flags invalid nicknames by matching:
-    // 1. Names starting with disallowed chars (#, $, :, &, +, %, ~, ,)
-    // 2. Names containing forbidden punctuation (, * . ? ! @ or spaces)
-    // 3. Names starting with '+' followed by q, a, o, h, or v (reserved for IRC
-    // modes)
-    inline static const std::regex incorrectRegex{
-        "^([#$:#&+%~,]\\S*|\\S*[,*.?!@ ]\\S*|\\+(q|a|o|h|v)\\S*)"};
-
-public:
+class Server
+{
+   public:
     Server(int port, std::string password);
-    ~Server();
     Server(const Server& other);
     Server& operator=(const Server& other);
+    ~Server();
 
-    // CLIENT: Registration Methods
-    bool isRegistered(int clientFd);
-    void registerPassword(Client& client, std::string arg, size_t* clientIndex);
-    bool isUniqueNick(std::string nick);
-    void registerNickname(Client& client, std::string arg);
-    void registerUser(Client& client, std::string arg);
-    void authenticate(Client& client, std::string arg, size_t* clientIndex);
-    void registerClient(int clientFd, std::string arg, size_t* clientIndex);
+    void run();
+    void acceptClient();
+    void receiveData(int clientFd, size_t index);
+    void dispatchCommand(const std::string& fullMessage, int clientFd);
 
-    // NICK
-    size_t getClientIndex(int clientFd);
-    void broadcastAndUpdateNickname(int clientFd, size_t clientIndex,
-                                    const std::string& newNick);
-    void sendError(int clientFd, const std::string& errorCode,
-                   const std::string& nick, const std::string& details);
-    // void validateNick(int clientFd, std::string newNick);
-
-    void validateNick(int clientFd, const std::string& newNick);
-    void nick(int clientFd, std::string arg);
-
-    std::string getPassword() const { return _password; }
-    int getPort() const { return _port; }
-
-    // TEST/REMOVE: method to add a client to the _clients vector
     void addClient(const Client& client);
+    void eraseClient(int clientFd, size_t* clientIndex);
+
+    size_t getClientIndex(int clientFd);
     Client* getClientObjByFd(int fd);
+
+    bool isRegistered(int clientFd);
+    bool isUniqueNick(std::string nick);
+
+    inline int getPort() const { return _port; }
+    inline std::string getPassword() const { return _password; }
+
+    void registerClient(int clientFd, const std::string& arg, size_t* clientIndex);
+    void registerPassword(Client& client, const std::string& arg, size_t* clientIndex);
+    void registerNickname(Client& client, const std::string& arg);
+    void registerUser(Client& client, const std::string& arg);
+    void authenticate(Client& client, const std::string& arg, size_t* clientIndex);
+
+    // Channel management
+    Channel* getChannelByName(const std::string& name);
+    Channel* createOrGetChannel(const std::string& name);
+
+   private:
+    int _server_fd;
+    int _port;
+    std::string _password;
+
+    std::vector<Client> _clients;
+    std::vector<pollfd> _poll_fds;
+    std::vector<Channel> _channels;
 };
