@@ -43,6 +43,7 @@ class Server
     // Channel management
     Channel* getChannelByName(const std::string& name);
     Channel* createOrGetChannel(const std::string& name);
+    std::vector<Channel>& getChannels();
     // Channel-related methods (From your implementation)
     Channel* findChannel(const std::string& name);
     bool channelExists(const std::string& name);
