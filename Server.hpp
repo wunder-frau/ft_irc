@@ -26,6 +26,7 @@ class Server
 
     size_t getClientIndex(int clientFd);
     Client* getClientObjByFd(int fd);
+    Client* getClientObjByNick(const std::string& nick);
 
     bool isRegistered(int clientFd);
     bool isUniqueNick(std::string nick);

@@ -3,6 +3,9 @@
 #include "utils.hpp"
 #include "commands/join.hpp"
 #include "Channel.hpp"
+#include "commands/quit.hpp"
+#include "commands/notice.hpp"
+#include "commands/privmsg.hpp"
 
 #include <iostream>
 #include <unistd.h>
@@ -201,6 +204,16 @@ Client* Server::getClientObjByFd(int fd)
     return nullptr;
 }
 
+Client* Server::getClientObjByNick(const std::string& nick)
+{
+    for (std::vector<Client>::iterator it = _clients.begin(); it != _clients.end(); ++it)
+    {
+        if (it->getNick() == nick)
+            return &(*it);
+    }
+    return NULL;
+}
+
 size_t Server::getClientIndex(int clientFd)
 {
     for (size_t i = 0; i < _clients.size(); ++i)
@@ -222,9 +235,29 @@ void Server::dispatchCommand(const std::string& fullMessage, int clientFd)
 
     if (command == "NICK")
         executeNick(*this, clientFd, fullMessage);
-    if (command == "JOIN")
-        executeJoin(*this, clientFd, fullMessage);
+    else if (command == "JOIN")
+        handleJoin(clientFd, fullMessage);
+    else if (command == "PART")
+        handlePart(clientFd, fullMessage);
+    else if (command == "PRIVMSG")
+        executePrivmsg(*this, clientFd, fullMessage);  // if have
+    else if (command == "NOTICE")
+        executeNotice(*this, clientFd, fullMessage);  // if have
+    else if (command == "QUIT")
+        executeQuit(*this, clientFd, fullMessage);  // if have
+    else if (command == "MODE")
+        handleMode(clientFd, fullMessage);
+    else if (command == "TOPIC")
+        handleTopic(clientFd, fullMessage);
+    else if (command == "KICK")
+        handleKick(clientFd, fullMessage);
+    else if (command == "INVITE")
+        handleInvite(clientFd, fullMessage);
+    else
+        sendError(clientFd, "421", tokens[0], ":Unknown command");
 }
+
+std::vector<Channel>& Server::getChannels() { return _channels; }
 
 Channel* Server::getChannelByName(const std::string& name)
 {
