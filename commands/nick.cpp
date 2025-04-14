@@ -7,15 +7,6 @@
 
 extern std::regex incorrectRegex;
 
-// Helper to send an IRC error message
-static void sendError(Server& server, int clientFd, const std::string& errorCode,
-                      const std::string& nick, const std::string& details)
-{
-    (void)server;  // suppress unused warning
-    std::string msg = ":ft_irc " + errorCode + " " + nick + " " + details + "\r\n";
-    send(clientFd, msg.c_str(), msg.length(), 0);
-}
-
 // Broadcast nickname change and update the client
 static void broadcastAndUpdateNickname(Server& server, int clientFd, const std::string& newNick)
 {
@@ -68,7 +59,7 @@ static void validateNick(Server& server, int clientFd, const std::string& newNic
 void executeNick(Server& server, int clientFd, const std::string& arg)
 {
     std::vector<std::string> params;
-    splitTokens(arg, params, ' ');  // now using utils.hpp parser
+    parser(arg, params, ' ');  // now using utils.hpp parser
 
     if (params.empty() || params.at(0) != "NICK")
     {

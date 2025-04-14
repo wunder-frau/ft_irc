@@ -4,6 +4,7 @@
 #include <vector>
 #include <poll.h>
 
+#include "Channel.hpp"
 #include "Client.hpp"
 #include "Channel.hpp"
 
@@ -41,6 +42,23 @@ class Server
     // Channel management
     Channel* getChannelByName(const std::string& name);
     Channel* createOrGetChannel(const std::string& name);
+    // Channel-related methods (From your implementation)
+    Channel* findChannel(const std::string& name);
+    bool channelExists(const std::string& name);
+    void createChannel(const std::string& name, Client* creator);
+    void removeEmptyChannels();
+    void removeClientFromChannels(int clientFd);
+
+    // Channel commands (From your implementation)
+    void handleJoin(int clientFd, const std::string& arg);
+    void handlePart(int clientFd, const std::string& arg);
+    void handleInvite(int clientFd, const std::string& arg);
+    void handleKick(int clientFd, const std::string& arg);
+    void handleTopic(int clientFd, const std::string& arg);
+    void handleMode(int clientFd, const std::string& arg);
+
+    //    Client* getClientObjByFd(int fd);
+    //    int getChannelIndex(std::string name);
 
    private:
     int _server_fd;

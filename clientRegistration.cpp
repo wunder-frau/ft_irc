@@ -1,5 +1,5 @@
 #include "Server.hpp"
-#include "utils.hpp"  // for splitTokens
+#include "utils.hpp"  // for parser
 #include <regex>
 #include <iostream>
 #include "regexRules.hpp"
@@ -78,7 +78,7 @@ void Server::registerUser(Client& client, const std::string& arg)
         }
 
         std::vector<std::string> params;
-        splitTokens(arg, params, ' ');
+        parser(arg, params, ' ');
 
         if (params.size() >= 2)
         {

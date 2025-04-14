@@ -2,6 +2,7 @@
 #include "commands/nick.hpp"
 #include "utils.hpp"
 #include "commands/join.hpp"
+#include "Channel.hpp"
 
 #include <iostream>
 #include <unistd.h>
@@ -213,7 +214,7 @@ size_t Server::getClientIndex(int clientFd)
 void Server::dispatchCommand(const std::string& fullMessage, int clientFd)
 {
     std::vector<std::string> tokens;
-    splitTokens(fullMessage, tokens, ' ');
+    parser(fullMessage, tokens, ' ');
     if (tokens.empty())
         return;
 

@@ -7,6 +7,8 @@ Client::Client()
 {
 }
 
+Client::Client(int fd, const std::string& ip) : _ipA(ip), _fd(fd), _isRegistered(false) {}
+
 Client::Client(int fd, const sockaddr_in& addr)
     : _nickname(""), _password(""), _username(""), _fd(fd), _isRegistered(false)
 {

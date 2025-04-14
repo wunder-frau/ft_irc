@@ -4,6 +4,9 @@
 *.exe
 *.out
 *.log
+*.a
+*.exe
+*.dll
 
 # VS Code project settings
 .vscode/

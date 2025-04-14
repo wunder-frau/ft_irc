@@ -7,6 +7,7 @@ class Client
 {
    public:
     Client();
+    Client(int fd, const std::string& ip);  // <- for tests
     Client(int fd, const sockaddr_in& addr);
     Client(const Client& other);
     Client& operator=(const Client& other);
