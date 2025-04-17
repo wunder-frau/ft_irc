@@ -16,6 +16,9 @@ SOURCES := \
 	Channel.cpp \
 	clientRegistration.cpp \
 	commands/nick.cpp \
+	commands/notice.cpp \
+	commands/quit.cpp \
+	commands/privmsg.cpp \
 	commands/join.cpp \
 	utils.cpp \
 	ServerChannel.cpp \
@@ -32,7 +35,7 @@ endif
 # We're replacing join.cpp with ServerChannel.cpp which contains all channel commands
 # SOURCES := Channel.cpp nick.cpp main_test_join.cpp Server.cpp Client.cpp clientRegistration.cpp ServerChannel.cpp
 OBJECTS := $(SOURCES:.cpp=.o)
-HEADERS := Server.hpp Client.hpp Channel.hpp commands/nick.hpp commands/join.hpp utils.hpp regexRules.hpp
+HEADERS := Server.hpp Client.hpp Channel.hpp commands/quit.hpp commands/privmsg.hpp commands/notice.hpp commands/nick.hpp commands/join.hpp utils.hpp regexRules.hpp
 
 # Test sources
 TEST_SOURCES := Channel.cpp Server.cpp Client.cpp clientRegistration.cpp ServerChannel.cpp nick.cpp test_channels.cpp
