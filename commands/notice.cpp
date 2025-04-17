@@ -53,6 +53,9 @@ void executeNotice(Server& server, int clientFd, const std::string& fullMessage)
         return;  // No reply or error for NOTICE
 
     std::string target = tokens[1];
+    // Trim whitespace from target
+    target = trimWhitespace(target);
+    
     std::string message;
 
     size_t colonPos = fullMessage.find(':');

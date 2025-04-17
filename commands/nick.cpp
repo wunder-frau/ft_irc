@@ -25,34 +25,37 @@ static void validateNick(Server& server, int clientFd, const std::string& newNic
 {
     Client* client = server.getClientObjByFd(clientFd);  // ✅ no direct vector access
     std::string currentNick = client->getNick();
+    
+    // First, trim whitespace from the nickname
+    std::string trimmedNick = trimWhitespace(newNick);
 
-    if (newNick.empty())
+    if (trimmedNick.empty())
     {
         sendError(server, clientFd, "432", currentNick, newNick + " :Erroneous nickname (empty)");
         return;
     }
 
-    if (newNick.find(' ') != std::string::npos)
+    if (trimmedNick.find(' ') != std::string::npos)
     {
         sendError(server, clientFd, "432", currentNick,
-                  newNick + " :Erroneous nickname (contains space)");
+                  trimmedNick + " :Erroneous nickname (contains space)");
         return;
     }
 
-    if (std::regex_match(newNick, incorrectRegex))
+    if (std::regex_match(trimmedNick, incorrectRegex))
     {
         sendError(server, clientFd, "432", currentNick,
-                  newNick + " :Erroneous nickname (invalid pattern)");
+                  trimmedNick + " :Erroneous nickname (invalid pattern)");
         return;
     }
 
-    if (!server.isUniqueNick(newNick))
+    if (!server.isUniqueNick(trimmedNick))
     {
-        sendError(server, clientFd, "433", currentNick, newNick + " :Nickname is already in use");
+        sendError(server, clientFd, "433", currentNick, trimmedNick + " :Nickname is already in use");
         return;
     }
 
-    broadcastAndUpdateNickname(server, clientFd, newNick);
+    broadcastAndUpdateNickname(server, clientFd, trimmedNick);
 }
 
 // Entry point for NICK command
@@ -76,8 +79,9 @@ void executeNick(Server& server, int clientFd, const std::string& arg)
     }
 
     Client* client = server.getClientObjByFd(clientFd);
-    if (client->getNick() == params.at(1))
+    std::string trimmedNick = trimWhitespace(params.at(1));
+    if (client->getNick() == trimmedNick)
         return;
 
-    validateNick(server, clientFd, params.at(1));
+    validateNick(server, clientFd, trimmedNick);
 }

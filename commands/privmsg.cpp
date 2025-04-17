@@ -23,11 +23,8 @@ void executePrivmsg(Server& server, int clientFd, const std::string& fullMessage
         // Debug logs
         std::cout << "[DEBUG] PRIVMSG - Sender: '" << sender->getNick() << "', Target: '" << target << "'" << std::endl;
         
-        // Trim whitespace from target
-        while (!target.empty() && (target.back() == '\n' || target.back() == '\r' || 
-               target.back() == ' ' || target.back() == '\t')) {
-            target.pop_back();
-        }
+        // Trim whitespace from target using the common function
+        target = trimWhitespace(target);
         
         std::cout << "[DEBUG] PRIVMSG - After trimming, Target: '" << target << "'" << std::endl;
 

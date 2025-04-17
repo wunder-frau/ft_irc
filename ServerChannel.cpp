@@ -8,26 +8,13 @@
 // Find a channel by name
 Channel* Server::findChannel(const std::string& name)
 {
+    std::string searchName = trimWhitespace(name);
     std::cout << "[DEBUG] findChannel - Looking for '" << name << "'" << std::endl;
-    
-    // Trim whitespace from search name
-    std::string searchName = name;
-    while (!searchName.empty() && (searchName.back() == '\n' || searchName.back() == '\r' || 
-           searchName.back() == ' ' || searchName.back() == '\t')) {
-        searchName.pop_back();
-    }
-    
     std::cout << "[DEBUG] findChannel - After trimming: '" << searchName << "'" << std::endl;
     
     for (size_t i = 0; i < _channels.size(); ++i)
     {
-        // Trim whitespace from channel name
-        std::string channelName = _channels[i].getName();
-        while (!channelName.empty() && (channelName.back() == '\n' || channelName.back() == '\r' || 
-               channelName.back() == ' ' || channelName.back() == '\t')) {
-            channelName.pop_back();
-        }
-        
+        std::string channelName = trimWhitespace(_channels[i].getName());
         std::cout << "[DEBUG] findChannel - Comparing with trimmed: '" << channelName << "'" << std::endl;
         
         if (channelName == searchName)
@@ -44,21 +31,11 @@ Channel* Server::findChannel(const std::string& name)
 // Check if a channel with the given name exists
 bool Server::channelExists(const std::string& name) 
 {
-    // Trim whitespace from search name
-    std::string searchName = name;
-    while (!searchName.empty() && (searchName.back() == '\n' || searchName.back() == '\r' || 
-           searchName.back() == ' ' || searchName.back() == '\t')) {
-        searchName.pop_back();
-    }
+    std::string searchName = trimWhitespace(name);
     
     for (size_t i = 0; i < _channels.size(); ++i)
     {
-        // Trim whitespace from channel name
-        std::string channelName = _channels[i].getName();
-        while (!channelName.empty() && (channelName.back() == '\n' || channelName.back() == '\r' || 
-               channelName.back() == ' ' || channelName.back() == '\t')) {
-            channelName.pop_back();
-        }
+        std::string channelName = trimWhitespace(_channels[i].getName());
         
         if (channelName == searchName)
         {
@@ -74,13 +51,7 @@ void Server::createChannel(const std::string& name, Client* creator)
     if (creator == nullptr)
         return;
 
-    // Trim whitespace from channel name
-    std::string channelName = name;
-    while (!channelName.empty() && (channelName.back() == '\n' || channelName.back() == '\r' || 
-           channelName.back() == ' ' || channelName.back() == '\t')) {
-        channelName.pop_back();
-    }
-    
+    std::string channelName = trimWhitespace(name);
     std::cout << "[DEBUG] Creating new channel with name '" << channelName << "'" << std::endl;
     
     Channel newChannel(channelName);
@@ -167,7 +138,7 @@ void Server::handleJoin(int clientFd, const std::string& arg)
     // Join each channel
     for (size_t i = 0; i < channels.size(); ++i)
     {
-        std::string channelName = channels[i];
+        std::string channelName = trimWhitespace(channels[i]);
 
         // Validate channel name format (should start with #)
         if (channelName.empty() || channelName[0] != '#')
@@ -177,7 +148,7 @@ void Server::handleJoin(int clientFd, const std::string& arg)
         }
 
         // Get key if provided
-        std::string key = (i < keys.size()) ? keys[i] : "";
+        std::string key = (i < keys.size()) ? trimWhitespace(keys[i]) : "";
 
         // Check if channel exists
         Channel* channel = findChannel(channelName);
@@ -297,29 +268,30 @@ void Server::handlePart(int clientFd, const std::string& arg)
     }
 
     // Part each channel
-    for (const auto& channelName : channels)
+    for (const auto& channel : channels)
     {
-        Channel* channel = findChannel(channelName);
-        if (!channel)
+        std::string channelName = trimWhitespace(channel);
+        Channel* chan = findChannel(channelName);
+        if (!chan)
         {
             sendError(clientFd, "403", client->getNick(), channelName + " :No such channel");
             continue;
         }
 
-        if (!channel->isInChannel(client))
+        if (!chan->isInChannel(client))
         {
             sendError(clientFd, "442", client->getNick(),
-                      channelName + " :You're not on that channel");
+                    channelName + " :You're not on that channel");
             continue;
         }
 
         // Send PART message to all channel members
         std::string partMsg = ":" + client->getNick() + "!~" + client->getUser() + "@" +
-                              client->getIPa() + " PART " + channelName + " :" + reason + "\r\n";
-        channel->broadcast(partMsg);
+                            client->getIPa() + " PART " + channelName + " :" + reason + "\r\n";
+        chan->broadcast(partMsg);
 
         // Remove client from channel
-        channel->removeClient(client);
+        chan->removeClient(client);
     }
 
     // Clean up empty channels
@@ -345,8 +317,22 @@ void Server::handleInvite(int clientFd, const std::string& arg)
         return;
     }
 
-    std::string targetNick = params[1];
-    std::string channelName = params[2];
+    std::string targetNick = trimWhitespace(params[1]);
+    std::string channelName = trimWhitespace(params[2]);
+    
+    // Debug logs to inspect channel name
+    std::cout << "[DEBUG] INVITE - Original params[1]: '" << params[1] << "'" << std::endl;
+    std::cout << "[DEBUG] INVITE - Original params[2]: '" << params[2] << "'" << std::endl;
+    std::cout << "[DEBUG] INVITE - Target nick after trimming: '" << targetNick << "'" << std::endl;
+    std::cout << "[DEBUG] INVITE - Channel name after trimming: '" << channelName << "'" << std::endl;
+    
+    // Debug log to show all channels
+    std::cout << "[DEBUG] INVITE - All channels:" << std::endl;
+    for (size_t i = 0; i < _channels.size(); ++i)
+    {
+        std::string name = _channels[i].getName();
+        std::cout << "[DEBUG]   " << i << ": '" << name << "'" << std::endl;
+    }
 
     // Find target client
     Client* target = nullptr;
@@ -429,8 +415,8 @@ void Server::handleKick(int clientFd, const std::string& arg)
         return;
     }
 
-    std::string channelName = params[1];
-    std::string targetNick = params[2];
+    std::string channelName = trimWhitespace(params[1]);
+    std::string targetNick = trimWhitespace(params[2]);
 
     // Extract reason if provided
     std::string reason = "";
@@ -521,13 +507,13 @@ void Server::handleTopic(int clientFd, const std::string& arg)
         return;
     }
 
-    std::string channelName = params[1];
+    std::string channelName = trimWhitespace(params[1]);
 
     // Debug: Print all channel names in the vector
-    std::cout << "DEBUG: Looking for channel '" << channelName << "' in " << _channels.size() << " channels:" << std::endl;
+    std::cout << "[DEBUG] Looking for channel '" << channelName << "' in " << _channels.size() << " channels:" << std::endl;
     for (size_t i = 0; i < _channels.size(); ++i)
     {
-        std::cout << "  " << i << ": '" << _channels[i].getName() << "'" << std::endl;
+        std::cout << "[DEBUG]   " << i << ": '" << _channels[i].getName() << "'" << std::endl;
     }
 
     // Find channel
@@ -612,7 +598,7 @@ void Server::handleMode(int clientFd, const std::string& arg)
         return;
     }
 
-    std::string channelName = params[1];
+    std::string channelName = trimWhitespace(params[1]);
 
     // Find channel
     Channel* channel = findChannel(channelName);
@@ -650,7 +636,8 @@ void Server::handleMode(int clientFd, const std::string& arg)
     }
 
     // Parse mode string
-    std::string modeString = params[2];
+    std::string modeString = trimWhitespace(params[2]);
+
     if (modeString.empty() || (modeString[0] != '+' && modeString[0] != '-'))
     {
         sendError(clientFd, "472", client->getNick(), modeString + " :is unknown mode char to me");
@@ -659,17 +646,23 @@ void Server::handleMode(int clientFd, const std::string& arg)
 
     bool adding = (modeString[0] == '+');
 
+    std::cout << "[DEBUG] Processing MODE command: '" << modeString << "'" << std::endl;
+
     // Process each mode character
     for (size_t i = 1; i < modeString.length(); ++i)
     {
         char modeChar = modeString[i];
-        std::string modeChangeMsg;  // Define the string outside the switch
+        std::string modeChangeMsg;
+        bool handled = false;
+
+        std::cout << "[DEBUG] Processing mode character: '" << modeChar << "'" << std::endl;
 
         // Handle different modes
         switch (modeChar)
         {
             case 'i':  // Invite-only
                 channel->setInviteOnly(adding);
+                handled = true;
 
                 // Broadcast mode change
                 modeChangeMsg = ":" + client->getNick() + "!~" + client->getUser() + "@" +
@@ -679,11 +672,14 @@ void Server::handleMode(int clientFd, const std::string& arg)
                 break;
 
                 // Add other mode characters here as needed
-
-            default:
-                sendError(clientFd, "472", client->getNick(),
-                          std::string(1, modeChar) + " :is unknown mode char to me");
-                break;
+        }
+        
+        // Only send an error if the mode wasn't handled
+        if (!handled)
+        {
+            std::cout << "[DEBUG] Unhandled mode character: '" << modeChar << "'" << std::endl;
+            sendError(clientFd, "472", client->getNick(), 
+                      std::string(1, modeChar) + " :is unknown mode char to me");
         }
     }
 }
