@@ -131,12 +131,24 @@ bool Channel::kick(Client* sender, Client* target)
 
 void Channel::broadcast(const std::string& message, Client* except)
 {
-    for (Client* client : _clients)
-    {
-        if (client != except)
+    // Debug: Print the message being broadcast
+    std::cout << "[DEBUG] Broadcasting message to channel '" << _name << "': " << message << std::endl;
+    
+    try {
+        for (Client* client : _clients)
         {
-            send(client->getFd(), message.c_str(), message.length(), 0);
+            if (client != except && client != nullptr)
+            {
+                int fd = client->getFd();
+                if (fd > 0) {  // Valid file descriptor check
+                    send(fd, message.c_str(), message.length(), 0);
+                } else {
+                    std::cout << "[WARNING] Invalid client fd encountered in broadcast: " << fd << std::endl;
+                }
+            }
         }
+    } catch (const std::exception& e) {
+        std::cerr << "[ERROR] in broadcast: " << e.what() << std::endl;
     }
 }
 

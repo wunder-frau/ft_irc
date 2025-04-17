@@ -239,12 +239,12 @@ void Server::dispatchCommand(const std::string& fullMessage, int clientFd)
         handleJoin(clientFd, fullMessage);
     else if (command == "PART")
         handlePart(clientFd, fullMessage);
-    else if (command == "PRIVMSG")
-        executePrivmsg(*this, clientFd, fullMessage);  // if have
+    else if (command == "PRIVMSG" || command == "MSG")
+        executePrivmsg(*this, clientFd, fullMessage);
     else if (command == "NOTICE")
-        executeNotice(*this, clientFd, fullMessage);  // if have
+        executeNotice(*this, clientFd, fullMessage);
     else if (command == "QUIT")
-        executeQuit(*this, clientFd, fullMessage);  // if have
+        executeQuit(*this, clientFd, fullMessage);
     else if (command == "MODE")
         handleMode(clientFd, fullMessage);
     else if (command == "TOPIC")
@@ -261,9 +261,23 @@ std::vector<Channel>& Server::getChannels() { return _channels; }
 
 Channel* Server::getChannelByName(const std::string& name)
 {
+    // Trim whitespace from search name
+    std::string searchName = name;
+    while (!searchName.empty() && (searchName.back() == '\n' || searchName.back() == '\r' || 
+           searchName.back() == ' ' || searchName.back() == '\t')) {
+        searchName.pop_back();
+    }
+    
     for (size_t i = 0; i < _channels.size(); ++i)
     {
-        if (_channels[i].getName() == name)
+        // Trim whitespace from channel name
+        std::string channelName = _channels[i].getName();
+        while (!channelName.empty() && (channelName.back() == '\n' || channelName.back() == '\r' || 
+               channelName.back() == ' ' || channelName.back() == '\t')) {
+            channelName.pop_back();
+        }
+        
+        if (channelName == searchName)
             return &_channels[i];
     }
     return nullptr;
@@ -271,10 +285,17 @@ Channel* Server::getChannelByName(const std::string& name)
 
 Channel* Server::createOrGetChannel(const std::string& name)
 {
-    Channel* existing = getChannelByName(name);
+    // Trim whitespace from channel name
+    std::string channelName = name;
+    while (!channelName.empty() && (channelName.back() == '\n' || channelName.back() == '\r' || 
+           channelName.back() == ' ' || channelName.back() == '\t')) {
+        channelName.pop_back();
+    }
+    
+    Channel* existing = getChannelByName(channelName);
     if (existing)
         return existing;
 
-    _channels.push_back(Channel(name));
+    _channels.push_back(Channel(channelName));
     return &_channels.back();
 }

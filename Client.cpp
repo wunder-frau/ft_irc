@@ -71,14 +71,28 @@ void Client::setPassword(const std::string& password)
 
 void Client::setNickname(const std::string& nick)
 {
-    _nickname = nick;
-    std::cout << "[INFO] Client fd=" << _fd << " set nickname: " << nick << std::endl;
+    // Trim whitespace from nickname
+    std::string trimmedNick = nick;
+    while (!trimmedNick.empty() && (trimmedNick.back() == '\n' || trimmedNick.back() == '\r' || 
+           trimmedNick.back() == ' ' || trimmedNick.back() == '\t')) {
+        trimmedNick.pop_back();
+    }
+    
+    _nickname = trimmedNick;
+    std::cout << "[INFO] Client fd=" << _fd << " set nickname: " << trimmedNick << std::endl;
 }
 
 void Client::setUsername(const std::string& user)
 {
-    _username = user;
-    std::cout << "[INFO] Client fd=" << _fd << " set username: " << user << std::endl;
+    // Trim whitespace from username
+    std::string trimmedUser = user;
+    while (!trimmedUser.empty() && (trimmedUser.back() == '\n' || trimmedUser.back() == '\r' || 
+           trimmedUser.back() == ' ' || trimmedUser.back() == '\t')) {
+        trimmedUser.pop_back();
+    }
+    
+    _username = trimmedUser;
+    std::cout << "[INFO] Client fd=" << _fd << " set username: " << trimmedUser << std::endl;
 }
 
 void Client::setFd(int fd) { _fd = fd; }

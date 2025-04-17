@@ -8,18 +8,65 @@
 // Find a channel by name
 Channel* Server::findChannel(const std::string& name)
 {
+    std::cout << "[DEBUG] findChannel - Looking for '" << name << "'" << std::endl;
+    
+    // Trim whitespace from search name
+    std::string searchName = name;
+    while (!searchName.empty() && (searchName.back() == '\n' || searchName.back() == '\r' || 
+           searchName.back() == ' ' || searchName.back() == '\t')) {
+        searchName.pop_back();
+    }
+    
+    std::cout << "[DEBUG] findChannel - After trimming: '" << searchName << "'" << std::endl;
+    
     for (size_t i = 0; i < _channels.size(); ++i)
     {
-        if (_channels[i].getName() == name)
+        // Trim whitespace from channel name
+        std::string channelName = _channels[i].getName();
+        while (!channelName.empty() && (channelName.back() == '\n' || channelName.back() == '\r' || 
+               channelName.back() == ' ' || channelName.back() == '\t')) {
+            channelName.pop_back();
+        }
+        
+        std::cout << "[DEBUG] findChannel - Comparing with trimmed: '" << channelName << "'" << std::endl;
+        
+        if (channelName == searchName)
         {
+            std::cout << "[DEBUG] findChannel - Match found!" << std::endl;
             return &_channels[i];
         }
     }
+    
+    std::cout << "[DEBUG] findChannel - No match found" << std::endl;
     return nullptr;
 }
 
 // Check if a channel with the given name exists
-bool Server::channelExists(const std::string& name) { return findChannel(name) != nullptr; }
+bool Server::channelExists(const std::string& name) 
+{
+    // Trim whitespace from search name
+    std::string searchName = name;
+    while (!searchName.empty() && (searchName.back() == '\n' || searchName.back() == '\r' || 
+           searchName.back() == ' ' || searchName.back() == '\t')) {
+        searchName.pop_back();
+    }
+    
+    for (size_t i = 0; i < _channels.size(); ++i)
+    {
+        // Trim whitespace from channel name
+        std::string channelName = _channels[i].getName();
+        while (!channelName.empty() && (channelName.back() == '\n' || channelName.back() == '\r' || 
+               channelName.back() == ' ' || channelName.back() == '\t')) {
+            channelName.pop_back();
+        }
+        
+        if (channelName == searchName)
+        {
+            return true;
+        }
+    }
+    return false;
+}
 
 // Create a new channel with the given name and creator
 void Server::createChannel(const std::string& name, Client* creator)
@@ -27,11 +74,27 @@ void Server::createChannel(const std::string& name, Client* creator)
     if (creator == nullptr)
         return;
 
-    Channel newChannel(name);
+    // Trim whitespace from channel name
+    std::string channelName = name;
+    while (!channelName.empty() && (channelName.back() == '\n' || channelName.back() == '\r' || 
+           channelName.back() == ' ' || channelName.back() == '\t')) {
+        channelName.pop_back();
+    }
+    
+    std::cout << "[DEBUG] Creating new channel with name '" << channelName << "'" << std::endl;
+    
+    Channel newChannel(channelName);
     _channels.push_back(newChannel);
 
+    // Debug: Print all channels after creation
+    std::cout << "[DEBUG] Channels after creation:" << std::endl;
+    for (size_t i = 0; i < _channels.size(); ++i)
+    {
+        std::cout << "[DEBUG]   " << i << ": '" << _channels[i].getName() << "'" << std::endl;
+    }
+
     // Get the newly created channel and add the creator
-    Channel* channel = findChannel(name);
+    Channel* channel = findChannel(channelName);
     if (channel)
     {
         channel->addClient(creator);
@@ -459,6 +522,13 @@ void Server::handleTopic(int clientFd, const std::string& arg)
     }
 
     std::string channelName = params[1];
+
+    // Debug: Print all channel names in the vector
+    std::cout << "DEBUG: Looking for channel '" << channelName << "' in " << _channels.size() << " channels:" << std::endl;
+    for (size_t i = 0; i < _channels.size(); ++i)
+    {
+        std::cout << "  " << i << ": '" << _channels[i].getName() << "'" << std::endl;
+    }
 
     // Find channel
     Channel* channel = findChannel(channelName);

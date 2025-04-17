@@ -6,7 +6,7 @@ TEST_NICK := test_nick
 TEST_CHANNEL := test_channel
 TEST_SERVER := test_server
 
-CC := c++
+CC := g++
 FLAGS := -std=c++20 -Wall -Wextra -Werror
 
 SOURCES := \
