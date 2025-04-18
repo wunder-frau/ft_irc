@@ -1,16 +1,15 @@
 #pragma once
 
+#include <poll.h>
+
 #include <string>
 #include <vector>
-#include <poll.h>
 
 #include "Channel.hpp"
 #include "Client.hpp"
-#include "Channel.hpp"
 
-class Server
-{
-   public:
+class Server {
+public:
     Server(int port, std::string password);
     Server(const Server& other);
     Server& operator=(const Server& other);
@@ -35,11 +34,14 @@ class Server
     inline int getPort() const { return _port; }
     inline std::string getPassword() const { return _password; }
 
-    void registerClient(int clientFd, const std::string& arg, size_t* clientIndex);
-    void registerPassword(Client& client, const std::string& arg, size_t* clientIndex);
+    void registerClient(int clientFd, const std::string& arg,
+                        size_t* clientIndex);
+    void registerPassword(Client& client, const std::string& arg,
+                          size_t* clientIndex);
     void registerNickname(Client& client, const std::string& arg);
     void registerUser(Client& client, const std::string& arg);
-    void authenticate(Client& client, const std::string& arg, size_t* clientIndex);
+    void authenticate(Client& client, const std::string& arg,
+                      size_t* clientIndex);
 
     // Channel management
     Channel* getChannelByName(const std::string& name);
@@ -61,9 +63,19 @@ class Server
     void handleMode(int clientFd, const std::string& arg);
 
     //    Client* getClientObjByFd(int fd);
-    //    int getChannelIndex(std::string name);
 
-   private:
+    // MODE
+    void setMode(int clientFd, std::vector<std::string>& params);
+    bool verifyParams(int clientFd, std::vector<std::string>& params);
+    int getChannelIndex(std::string name);
+    bool isClient(std::string nick);
+    bool hasOpRights(int cfd, std::string channelName);
+    void returnChannelMode(int cfd, Channel& channel);
+    bool applyChannelMode(Client* client, Channel& channel,
+                          const std::string& flag,
+                          const std::vector<std::string>& params);
+
+private:
     int _server_fd;
     int _port;
     std::string _password;
@@ -71,4 +83,5 @@ class Server
     std::vector<Client> _clients;
     std::vector<pollfd> _poll_fds;
     std::vector<Channel> _channels;
+    std::unordered_map<int, std::string> _recvBuffers;
 };

@@ -1,41 +1,43 @@
 #include "Server.hpp"
-#include "commands/nick.hpp"
-#include "utils.hpp"
-#include "commands/join.hpp"
-#include "Channel.hpp"
-#include "commands/quit.hpp"
-#include "commands/notice.hpp"
-#include "commands/privmsg.hpp"
 
-#include <iostream>
-#include <unistd.h>
 #include <fcntl.h>
-#include <sys/socket.h>
 #include <netinet/in.h>
+#include <sys/socket.h>
+#include <unistd.h>
+
 #include <cstring>
+#include <iostream>
+#include <sstream>
 #include <stdexcept>
 
-Server::Server(int port, std::string password) : _port(port), _password(password)
-{
+#include "Channel.hpp"
+#include "commands/join.hpp"
+#include "commands/mode.hpp"
+#include "commands/nick.hpp"
+#include "commands/notice.hpp"
+#include "commands/privmsg.hpp"
+#include "commands/quit.hpp"
+#include "utils.hpp"
+
+Server::Server(int port, std::string password)
+    : _port(port), _password(password) {
     // Create socket
     _server_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (_server_fd < 0)
-    {
+    if (_server_fd < 0) {
         perror("socket");
         throw std::runtime_error("Failed to create socket");
     }
 
     // Set to non-blocking
-    if (fcntl(_server_fd, F_SETFL, O_NONBLOCK) < 0)
-    {
+    if (fcntl(_server_fd, F_SETFL, O_NONBLOCK) < 0) {
         perror("fcntl");
         throw std::runtime_error("Failed to set socket to non-blocking");
     }
 
     // Reuse address
     int opt = 1;
-    if (setsockopt(_server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
-    {
+    if (setsockopt(_server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) <
+        0) {
         perror("setsockopt");
         throw std::runtime_error("Failed to set socket options");
     }
@@ -46,15 +48,13 @@ Server::Server(int port, std::string password) : _port(port), _password(password
     addr.sin_port = htons(_port);
     addr.sin_addr.s_addr = INADDR_ANY;
 
-    if (bind(_server_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0)
-    {
+    if (bind(_server_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
         perror("bind");
         throw std::runtime_error("Failed to bind");
     }
 
     // Listen
-    if (listen(_server_fd, SOMAXCONN) < 0)
-    {
+    if (listen(_server_fd, SOMAXCONN) < 0) {
         perror("listen");
         throw std::runtime_error("Failed to listen");
     }
@@ -66,41 +66,34 @@ Server::Server(int port, std::string password) : _port(port), _password(password
     _poll_fds.push_back(pfd);
 }
 
-Server::Server(const Server& other) : _port(other.getPort()), _password(other.getPassword()) {}
+Server::Server(const Server& other)
+    : _port(other.getPort()), _password(other.getPassword()) {}
 
-Server::~Server()
-{
+Server::~Server() {
     close(_server_fd);
     for (size_t i = 1; i < _poll_fds.size(); ++i) close(_poll_fds[i].fd);
 }
 
-Server& Server::operator=(const Server& other)
-{
-    if (this != &other)
-    {
+Server& Server::operator=(const Server& other) {
+    if (this != &other) {
         _port = other.getPort();
         _password = other.getPassword();
     }
     return (*this);
 }
 
-void Server::run()
-{
+void Server::run() {
     std::cout << "Server running on port " << _port << std::endl;
 
-    while (true)
-    {
+    while (true) {
         int ret = poll(_poll_fds.data(), _poll_fds.size(), -1);
-        if (ret < 0)
-        {
+        if (ret < 0) {
             perror("poll");
             break;
         }
 
-        for (size_t i = 0; i < _poll_fds.size(); ++i)
-        {
-            if (_poll_fds[i].revents & POLLIN)
-            {
+        for (size_t i = 0; i < _poll_fds.size(); ++i) {
+            if (_poll_fds[i].revents & POLLIN) {
                 if (_poll_fds[i].fd == _server_fd)
                     acceptClient();
                 else
@@ -110,14 +103,12 @@ void Server::run()
     }
 }
 
-void Server::acceptClient()
-{
+void Server::acceptClient() {
     sockaddr_in client_addr;
     socklen_t len = sizeof(client_addr);
     int client_fd = accept(_server_fd, (sockaddr*)&client_addr, &len);
 
-    if (client_fd < 0)
-    {
+    if (client_fd < 0) {
         perror("accept");
         return;
     }
@@ -135,35 +126,39 @@ void Server::acceptClient()
     std::cout << "Accepted client fd: " << client_fd << std::endl;
 }
 
-void Server::receiveData(int clientFd, size_t index)
-{
+void Server::receiveData(int clientFd, size_t index) {
     char buffer[1024];
-    ssize_t bytes_read = recv(clientFd, buffer, sizeof(buffer) - 1, 0);
-
-    if (bytes_read <= 0)
-    {
-        std::cout << "Client disconnected: fd = " << clientFd << std::endl;
+    ssize_t n = recv(clientFd, buffer, sizeof(buffer), 0);
+    if (n <= 0) {
+        std::cout << "Client disconnected: fd=" << clientFd << std::endl;
         close(clientFd);
+        _recvBuffers.erase(clientFd);
         _poll_fds.erase(_poll_fds.begin() + index);
         eraseClient(clientFd, &index);
         return;
     }
-
-    buffer[bytes_read] = '\0';
-    std::string fullMessage(buffer);
-
-    if (!isRegistered(clientFd))
-        registerClient(clientFd, fullMessage, &index);
-    else
-        dispatchCommand(fullMessage, clientFd);
+    auto& pending = _recvBuffers[clientFd];
+    pending.append(buffer, n);
+    size_t pos;
+    while ((pos = pending.find('\n')) != std::string::npos) {
+        std::string line = pending.substr(0, pos);
+        // drop the "\r" if it’s CRLF
+        if (!line.empty() && line.back() == '\r')
+            line.pop_back();
+        // remove this line + the '\n' from pending buffer
+        pending.erase(0, pos + 1);
+        // Now we have exactly one IRC command line:
+        if (!isRegistered(clientFd)) {
+            registerClient(clientFd, line, &index);
+        } else {
+            dispatchCommand(line, clientFd);
+        }
+    }
 }
 
-void Server::eraseClient(int clientFd, size_t* clientIndex)
-{
-    for (size_t i = 0; i < _clients.size(); ++i)
-    {
-        if (_clients[i].getFd() == clientFd)
-        {
+void Server::eraseClient(int clientFd, size_t* clientIndex) {
+    for (size_t i = 0; i < _clients.size(); ++i) {
+        if (_clients[i].getFd() == clientFd) {
             _clients.erase(_clients.begin() + i);
             break;
         }
@@ -172,20 +167,18 @@ void Server::eraseClient(int clientFd, size_t* clientIndex)
         (*clientIndex)--;
 }
 
-bool Server::isRegistered(int clientFd)
-{
-    for (std::vector<Client>::iterator it = _clients.begin(); it != _clients.end(); ++it)
-    {
+bool Server::isRegistered(int clientFd) {
+    for (std::vector<Client>::iterator it = _clients.begin();
+         it != _clients.end(); ++it) {
         if (it->getFd() == clientFd)
             return it->isRegistered();
     }
     return false;
 }
 
-bool Server::isUniqueNick(std::string nick)
-{
-    for (std::vector<Client>::iterator it = _clients.begin(); it != _clients.end(); ++it)
-    {
+bool Server::isUniqueNick(std::string nick) {
+    for (std::vector<Client>::iterator it = _clients.begin();
+         it != _clients.end(); ++it) {
         if (it->getNick() == nick)
             return false;
     }
@@ -194,104 +187,111 @@ bool Server::isUniqueNick(std::string nick)
 
 void Server::addClient(const Client& client) { _clients.push_back(client); }
 
-Client* Server::getClientObjByFd(int fd)
-{
-    for (auto& client : _clients)
-    {
+Client* Server::getClientObjByFd(int fd) {
+    for (auto& client : _clients) {
         if (client.getFd() == fd)
             return &client;
     }
     return nullptr;
 }
 
-Client* Server::getClientObjByNick(const std::string& nick)
-{
-    for (std::vector<Client>::iterator it = _clients.begin(); it != _clients.end(); ++it)
-    {
+Client* Server::getClientObjByNick(const std::string& nick) {
+    for (std::vector<Client>::iterator it = _clients.begin();
+         it != _clients.end(); ++it) {
         if (it->getNick() == nick)
             return &(*it);
     }
     return NULL;
 }
 
-size_t Server::getClientIndex(int clientFd)
-{
-    for (size_t i = 0; i < _clients.size(); ++i)
-    {
+size_t Server::getClientIndex(int clientFd) {
+    for (size_t i = 0; i < _clients.size(); ++i) {
         if (_clients[i].getFd() == clientFd)
             return i;
     }
-    throw std::runtime_error("Client with fd " + std::to_string(clientFd) + " not found");
+    throw std::runtime_error("Client with fd " + std::to_string(clientFd) +
+                             " not found");
 }
 
-void Server::dispatchCommand(const std::string& fullMessage, int clientFd)
-{
-    std::vector<std::string> tokens;
-    parser(fullMessage, tokens, ' ');
-    if (tokens.empty())
-        return;
+void Server::dispatchCommand(const std::string& fullMessage, int clientFd) {
+    // Split on '\n' and trim trailing '\r'
+    std::istringstream stream(fullMessage);
+    std::string line;
+    while (std::getline(stream, line)) {
+        if (!line.empty() && line.back() == '\r') {
+            line.pop_back();
+        }
+        if (!line.empty() && line[0] == ':')
+            continue;
 
-    std::string command = tokens[0];
+        std::vector<std::string> tokens;
+        parser(line, tokens, ' ');
+        if (tokens.empty())
+            continue;
 
-    if (command == "NICK")
-        executeNick(*this, clientFd, fullMessage);
-    else if (command == "JOIN")
-        handleJoin(clientFd, fullMessage);
-    else if (command == "PART")
-        handlePart(clientFd, fullMessage);
-    else if (command == "PRIVMSG" || command == "MSG")
-        executePrivmsg(*this, clientFd, fullMessage);
-    else if (command == "NOTICE")
-        executeNotice(*this, clientFd, fullMessage);
-    else if (command == "QUIT")
-        executeQuit(*this, clientFd, fullMessage);
-    else if (command == "MODE")
-        handleMode(clientFd, fullMessage);
-    else if (command == "TOPIC")
-        handleTopic(clientFd, fullMessage);
-    else if (command == "KICK")
-        handleKick(clientFd, fullMessage);
-    else if (command == "INVITE")
-        handleInvite(clientFd, fullMessage);
-    else
-        sendError(clientFd, "421", tokens[0], ":Unknown command");
+        const std::string& command = tokens[0];
+
+        if (command == "NICK") {
+            executeNick(*this, clientFd, line);
+        } else if (command == "JOIN") {
+            handleJoin(clientFd, line);
+        } else if (command == "PART") {
+            handlePart(clientFd, line);
+        } else if (command == "PRIVMSG" || command == "MSG") {
+            executePrivmsg(*this, clientFd, line);
+        } else if (command == "NOTICE") {
+            executeNotice(*this, clientFd, line);
+        } else if (command == "QUIT") {
+            executeQuit(*this, clientFd, line);
+        } else if (command == "MODE") {
+            executeMode(*this, clientFd, line);
+        } else if (command == "TOPIC") {
+            handleTopic(clientFd, line);
+        } else if (command == "KICK") {
+            handleKick(clientFd, line);
+        } else if (command == "INVITE") {
+            handleInvite(clientFd, line);
+        } else {
+            sendError(clientFd, "421", command, ":Unknown command");
+        }
+    }
 }
 
 std::vector<Channel>& Server::getChannels() { return _channels; }
 
-Channel* Server::getChannelByName(const std::string& name)
-{
+Channel* Server::getChannelByName(const std::string& name) {
     // Trim whitespace from search name
     std::string searchName = name;
-    while (!searchName.empty() && (searchName.back() == '\n' || searchName.back() == '\r' || 
-           searchName.back() == ' ' || searchName.back() == '\t')) {
+    while (!searchName.empty() &&
+           (searchName.back() == '\n' || searchName.back() == '\r' ||
+            searchName.back() == ' ' || searchName.back() == '\t')) {
         searchName.pop_back();
     }
-    
-    for (size_t i = 0; i < _channels.size(); ++i)
-    {
+
+    for (size_t i = 0; i < _channels.size(); ++i) {
         // Trim whitespace from channel name
         std::string channelName = _channels[i].getName();
-        while (!channelName.empty() && (channelName.back() == '\n' || channelName.back() == '\r' || 
-               channelName.back() == ' ' || channelName.back() == '\t')) {
+        while (!channelName.empty() &&
+               (channelName.back() == '\n' || channelName.back() == '\r' ||
+                channelName.back() == ' ' || channelName.back() == '\t')) {
             channelName.pop_back();
         }
-        
+
         if (channelName == searchName)
             return &_channels[i];
     }
     return nullptr;
 }
 
-Channel* Server::createOrGetChannel(const std::string& name)
-{
+Channel* Server::createOrGetChannel(const std::string& name) {
     // Trim whitespace from channel name
     std::string channelName = name;
-    while (!channelName.empty() && (channelName.back() == '\n' || channelName.back() == '\r' || 
-           channelName.back() == ' ' || channelName.back() == '\t')) {
+    while (!channelName.empty() &&
+           (channelName.back() == '\n' || channelName.back() == '\r' ||
+            channelName.back() == ' ' || channelName.back() == '\t')) {
         channelName.pop_back();
     }
-    
+
     Channel* existing = getChannelByName(channelName);
     if (existing)
         return existing;
