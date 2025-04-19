@@ -187,19 +187,6 @@ bool Server::applyChannelMode(Client* client, Channel& channel,
             channel.broadcast(msg);
             return true;
         }
-        // case 'l': {
-        //     // requires a limit in params[3]
-        //     if (params.size() < 4)
-        //         return false;
-        //     int limit = adding ? std::stoi(params[3]) : -1;
-        //     channel.setClientLimit(limit);
-        //     std::string msg = ":" + client->getNick() + "!~" +
-        //                       client->getUser() + "@" + client->getIPa() +
-        //                       " MODE " + channel.getName() + " " + modeStr +
-        //                       (adding ? " " + params[3] : "") + "\r\n";
-        //     channel.broadcast(msg);
-        //     return true;
-        // }
         case 'l': {
             // +l requires a numeric argument; -l does not
             if (adding) {
@@ -226,24 +213,48 @@ bool Server::applyChannelMode(Client* client, Channel& channel,
             channel.broadcast(msg);
             return true;
         }
-        // case 'o': {
-        //     // requires a nick in params[3]
-        //     if (params.size() < 4)
-        //         return false;
-        //     Client* target = getClientObjByNick(params[3]);
-        //     if (!target)
-        //         return false;
-        //     if (adding)
-        //         channel.addOp(target->getFd());
-        //     else
-        //         channel.removeOp(target->getFd());
-        //     std::string msg = ":" + client->getNick() + "!~" +
-        //                       client->getUser() + "@" + client->getIPa() +
-        //                       " MODE " + channel.getName() + " " + modeStr +
-        //                       " " + params[3] + "\r\n";
-        //     channel.broadcast(msg);
-        //     return true;
-        // }
+        case 'o': {
+            // 1) require a nick argument
+            if (params.size() < 4) {
+                sendError(client->getFd(), "461", client->getNick(),
+                          "MODE :Not enough parameters");
+                return true;  // handled with an error
+            }
+            std::string targetNick = params[3];
+
+            // 2) find that client
+            Client* target = getClientObjByNick(targetNick);
+            if (!target) {
+                // ERR_NOSUCHNICK (401)
+                sendError(client->getFd(), "401", client->getNick(),
+                          targetNick + " :No such nick/channel");
+                return true;
+            }
+
+            // 3) must already be in the channel
+            if (!channel.isInChannel(target)) {
+                // ERR_USERNOTINCHANNEL (441)
+                sendError(client->getFd(), "441", client->getNick(),
+                          targetNick + " " + channel.getName() +
+                              " :They aren't on that channel");
+                return true;
+            }
+
+            // 4) grant or revoke op status
+            if (adding)
+                channel.addOp(target->getFd());
+            else
+                channel.removeOp(target->getFd());
+
+            // 5) broadcast exactly what they typed
+            std::string modeLine = modeStr + " " + targetNick;
+            std::string msg = ":" + client->getNick() + "!~" +
+                              client->getUser() + "@" + client->getIPa() +
+                              " MODE " + channel.getName() + " " + modeLine +
+                              "\r\n";
+            channel.broadcast(msg);
+            return true;
+        }
         default:
             return false;  // unknown flag
     }

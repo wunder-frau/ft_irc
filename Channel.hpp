@@ -93,8 +93,6 @@ private:
 
     // Keep track of invited users (for invite-only channels)
     std::map<std::string, bool> _invited;
-    // bool _topicRestricted = false;
-    // std::string _key;
 
     // int _clientLimit;  // –1 means unlimited
     bool _topicRestricted = false;
