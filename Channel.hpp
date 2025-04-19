@@ -72,6 +72,11 @@ public:
     void setTopicRestricted(bool restricted);
     bool isTopicRestricted();
 
+    // KEY
+    void setKey(const std::string& k) { _key = k; }
+    const std::string& getKey() const { return _key; }
+    bool isKeyed() const { return !_key.empty(); }
+
 private:
     std::string _name;
     std::string _topic;
@@ -85,6 +90,7 @@ private:
     // Keep track of invited users (for invite-only channels)
     std::map<std::string, bool> _invited;
     bool _topicRestricted = false;
+    std::string _key;
 };
 
 #endif  // CHANNEL_HPP

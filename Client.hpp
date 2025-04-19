@@ -1,11 +1,11 @@
 #pragma once
 
-#include <string>
 #include <netinet/in.h>
 
-class Client
-{
-   public:
+#include <string>
+
+class Client {
+public:
     Client();
     Client(int fd, const std::string& ip);  // <- for tests
     Client(int fd, const sockaddr_in& addr);
@@ -28,11 +28,17 @@ class Client
     void setUsername(const std::string& user);
     void setFd(int fd);
 
-   private:
+    // KEY
+    void setKey(const std::string& k) { _key = k; }
+    const std::string& getKey() const { return _key; }
+    bool isKeyed() const { return !_key.empty(); }
+
+private:
     std::string _nickname;
     std::string _password;
     std::string _username;
     std::string _ipA;
     int _fd;
     bool _isRegistered;
+    std::string _key;
 };

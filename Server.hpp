@@ -74,6 +74,8 @@ public:
     bool applyChannelMode(Client* client, Channel& channel,
                           const std::string& flag,
                           const std::vector<std::string>& params);
+    bool setKey(int clientFd, Channel& channel,
+                const std::vector<std::string>& params);
 
 private:
     int _server_fd;

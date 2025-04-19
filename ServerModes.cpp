@@ -3,6 +3,49 @@
 #include "Server.hpp"
 #include "utils.hpp"
 
+// in Server.hpp (declaration)
+bool setKey(int clientFd, Channel& channel,
+            const std::vector<std::string>& params);
+
+// in Server.cpp
+
+static bool isValidKey(const std::string& s) {
+    // simple example: no spaces, length > 0
+    return !s.empty() && s.find(' ') == std::string::npos;
+}
+
+bool Server::setKey(int clientFd, Channel& channel,
+                    const std::vector<std::string>& params) {
+    // params[2] is "+k" or "-k"
+    bool adding = (params[2][0] == '+');
+    if (adding) {
+        if (params.size() < 4) {
+            sendError(clientFd, "461", getClientObjByFd(clientFd)->getNick(),
+                      "MODE :Not enough parameters");
+            return false;
+        }
+        const std::string& key = params[3];
+        if (!isValidKey(key)) {
+            sendError(clientFd, "525", getClientObjByFd(clientFd)->getNick(),
+                      channel.getName() + " :Key is not well‑formed");
+            return false;
+        }
+        channel.setKey(key);
+    } else {
+        // -k clears the key
+        channel.setKey("");
+    }
+
+    // broadcast the MODE change
+    Client* client = getClientObjByFd(clientFd);
+    std::string modeStr = params[2] + (adding ? " " + params[3] : "");
+    std::string msg = ":" + client->getNick() + "!~" + client->getUser() + "@" +
+                      client->getIPa() + " MODE " + channel.getName() + " " +
+                      modeStr + "\r\n";
+    channel.broadcast(msg);
+    return true;
+}
+
 bool Server::hasOpRights(int clientFd, std::string channelName) {
     int chIndex = getChannelIndex(channelName);
     std::vector<int>& ops = _channels.at(chIndex).getOps();
@@ -66,6 +109,8 @@ void Server::returnChannelMode(int clientFd, Channel& channel) {
         modes += 'i';
     if (channel.isTopicRestricted())  // ← add this check
         modes += 't';
+    if (channel.isKeyed())  // ← include the 'k' flag now
+        modes += 'k';
     // Compose and send the IRC reply
     std::string msg = ":ft_irc 324 " +
                       _clients.at(getClientIndex(clientFd)).getNick() + " " +
@@ -125,6 +170,37 @@ bool Server::applyChannelMode(Client* client, Channel& channel,
         //     channel.broadcast(msg);
         //     return true;
         // }
+        case 'k': {
+            // 1) Require a key argument
+            if (params.size() < 4) {
+                sendError(client->getFd(), "461", client->getNick(),
+                          "MODE :Not enough parameters");
+                return true;  // we “handled” it (with an error)
+            }
+            const std::string& key = params[3];
+
+            // 2) Validate the key when adding
+            if (adding && !isValidKey(key)) {
+                sendError(client->getFd(), "525", client->getNick(),
+                          channel.getName() + " :Key is not well-formed");
+                return true;
+            }
+
+            // 3) Apply or clear
+            if (adding)
+                channel.setKey(key);
+            else
+                channel.setKey("");
+
+            // 4) Broadcast the exact MODE line (with key when +k)
+            std::string modeLine = modeStr + (adding ? " " + key : "");
+            std::string msg = ":" + client->getNick() + "!~" +
+                              client->getUser() + "@" + client->getIPa() +
+                              " MODE " + channel.getName() + " " + modeLine +
+                              "\r\n";
+            channel.broadcast(msg);
+            return true;
+        }
         // case 'l': {
         //     // requires a limit in params[3]
         //     if (params.size() < 4)

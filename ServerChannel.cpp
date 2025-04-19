@@ -147,6 +147,13 @@ void Server::handleJoin(int clientFd, const std::string& arg) {
                 continue;
             }
 
+            // Key‑protected channels: must supply correct key
+            if (channel->isKeyed() && key != channel->getKey()) {
+                sendError(clientFd, "475", client->getNick(),
+                          channelName + " :Cannot join channel (+k)");
+                continue;
+            }
+
             // If client is already in the channel, do nothing
             if (channel->isInChannel(client)) {
                 continue;
