@@ -120,7 +120,10 @@ void Channel::removeClient(Client* client) {
     }
 }
 
-bool Channel::isOperator(Client* client) const { return client == _operator; }
+bool Channel::isOperator(Client* client) const {
+    int fd = client->getFd();
+    return std::find(_ops.begin(), _ops.end(), fd) != _ops.end();
+}
 
 bool Channel::isInChannel(Client* client) const {
     return std::find(_clients.begin(), _clients.end(), client) !=
@@ -146,30 +149,6 @@ bool Channel::kick(Client* sender, Client* target) {
               << std::endl;
     return true;
 }
-
-// void Channel::broadcast(const std::string& message, Client* except) {
-//     // Debug: Print the message being broadcast
-//     std::cout << "[DEBUG] Broadcasting message to channel '" << _name
-//               << "': " << message << std::endl;
-
-//     try {
-//         for (Client* client : _clients) {
-//             if (client != except && client != nullptr) {
-//                 int fd = client->getFd();
-//                 if (fd > 0) {  // Valid file descriptor check
-//                     send(fd, message.c_str(), message.length(), 0);
-//                 } else {
-//                     std::cout << "[WARNING] Invalid client fd encountered in
-//                     "
-//                                  "broadcast: "
-//                               << fd << std::endl;
-//                 }
-//             }
-//         }
-//     } catch (const std::exception& e) {
-//         std::cerr << "[ERROR] in broadcast: " << e.what() << std::endl;
-//     }
-// }
 
 void Channel::broadcast(const std::string& message, Client* except) {
     // 0) Dump the overall call
