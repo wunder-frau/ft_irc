@@ -16,7 +16,7 @@ void executeQuit(Server& server, int clientFd, const std::string& arg)
 
     size_t colonPos = quitMsg.find(':');
     if (colonPos != std::string::npos)
-        reason = quitMsg.substr(colonPos + 1);
+        reason = trimWhitespace(quitMsg.substr(colonPos + 1));
 
     std::string message = ":" + client->getNick() + "!~" + client->getUser() + "@" +
                           client->getIPa() + " QUIT :" + reason + "\r\n";

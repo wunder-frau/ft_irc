@@ -1,16 +1,15 @@
 #ifndef CHANNEL_HPP
 #define CHANNEL_HPP
 
-#include <string>
 #include <iostream>
-#include <vector>
 #include <map>
+#include <string>
+#include <vector>
 
 #include "Client.hpp"
 
-class Channel
-{
-   public:
+class Channel {
+public:
     // Default constructor
     Channel();
 
@@ -44,7 +43,8 @@ class Channel
     void addClient(Client* client);
 
     // Remove a client from the channel.
-    // If the client was the operator, reassign operator to another client if available.
+    // If the client was the operator, reassign operator to another client if
+    // available.
     void removeClient(Client* client);
 
     // Check if the given client is the channel operator.
@@ -64,10 +64,28 @@ class Channel
     // Get list of clients in the channel
     std::vector<Client*> getClients() const;
 
-   private:
+    // MODE
+    std::vector<int>& getOps() { return _ops; }
+
+    void addOp(int op) { _ops.push_back(op); }
+    void removeOp(int clientFd);
+    void setTopicRestricted(bool restricted);
+    bool isTopicRestricted() const;
+
+    // KEY
+    void setKey(const std::string& k) { _key = k; }
+    const std::string& getKey() const { return _key; }
+    bool isKeyed() const { return !_key.empty(); }
+
+    // Client‐limit (+l) management. −1 means “no limit”.
+    void setClientLimit(int limit) { _clientLimit = limit; }
+    int getClientLimit() const { return _clientLimit; }
+
+private:
     std::string _name;
     std::string _topic;
     bool _inviteOnly;
+    std::vector<int> _ops;  // moderator clients
 
     // Using vector for better memory management
     std::vector<Client*> _clients;
@@ -75,6 +93,11 @@ class Channel
 
     // Keep track of invited users (for invite-only channels)
     std::map<std::string, bool> _invited;
+
+    // int _clientLimit;  // –1 means unlimited
+    bool _topicRestricted = false;
+    std::string _key = "";
+    int _clientLimit = -1;  // –1 means unlimited
 };
 
 #endif  // CHANNEL_HPP
