@@ -147,6 +147,11 @@ void Server::handleJoin(int clientFd, const std::string& arg) {
                 continue;
             }
 
+            // If client is already in the channel, do nothing
+            if (channel->isInChannel(client)) {
+                continue;
+            }
+
             // Key‑protected channels: must supply correct key
             if (channel->isKeyed() && key != channel->getKey()) {
                 sendError(clientFd, "475", client->getNick(),
@@ -154,8 +159,12 @@ void Server::handleJoin(int clientFd, const std::string& arg) {
                 continue;
             }
 
-            // If client is already in the channel, do nothing
-            if (channel->isInChannel(client)) {
+            // Enforce +l (user limit)
+            int limit = channel->getClientLimit();
+            if (limit > -1 &&
+                channel->getClients().size() >= static_cast<size_t>(limit)) {
+                sendError(clientFd, "471", client->getNick(),
+                          channelName + " :Cannot join channel (+l)");
                 continue;
             }
 

@@ -68,14 +68,18 @@ public:
     std::vector<int>& getOps() { return _ops; }
 
     void addOp(int op) { _ops.push_back(op); }
-    void removeOp(int cfd);
+    void removeOp(int clientFd);
     void setTopicRestricted(bool restricted);
-    bool isTopicRestricted();
+    bool isTopicRestricted() const;
 
     // KEY
     void setKey(const std::string& k) { _key = k; }
     const std::string& getKey() const { return _key; }
     bool isKeyed() const { return !_key.empty(); }
+
+    // Client‐limit (+l) management. −1 means “no limit”.
+    void setClientLimit(int limit) { _clientLimit = limit; }
+    int getClientLimit() const { return _clientLimit; }
 
 private:
     std::string _name;
@@ -89,8 +93,13 @@ private:
 
     // Keep track of invited users (for invite-only channels)
     std::map<std::string, bool> _invited;
+    // bool _topicRestricted = false;
+    // std::string _key;
+
+    // int _clientLimit;  // –1 means unlimited
     bool _topicRestricted = false;
-    std::string _key;
+    std::string _key = "";
+    int _clientLimit = -1;  // –1 means unlimited
 };
 
 #endif  // CHANNEL_HPP

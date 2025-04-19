@@ -111,6 +111,8 @@ void Server::returnChannelMode(int clientFd, Channel& channel) {
         modes += 't';
     if (channel.isKeyed())  // ← include the 'k' flag now
         modes += 'k';
+    if (channel.getClientLimit() > -1)
+        modes += 'l';
     // Compose and send the IRC reply
     std::string msg = ":ft_irc 324 " +
                       _clients.at(getClientIndex(clientFd)).getNick() + " " +
@@ -121,7 +123,6 @@ void Server::returnChannelMode(int clientFd, Channel& channel) {
 bool Server::applyChannelMode(Client* client, Channel& channel,
                               const std::string& flag,
                               const std::vector<std::string>& params) {
-    (void)params;  // Unused parameter
     bool adding = (flag[0] == '+');
     char modeChar = flag[1];
     std::string modeStr = flag;
@@ -155,21 +156,6 @@ bool Server::applyChannelMode(Client* client, Channel& channel,
             channel.broadcast(msg);
             return true;
         }
-        // case 'k': {
-        //     // requires a key param in params[3]
-        //     if (params.size() < 4)
-        //         return false;
-        //     if (adding)
-        //         channel.setKey(params[3]);
-        //     else
-        //         channel.setKey("");
-        //     std::string msg = ":" + client->getNick() + "!~" +
-        //                       client->getUser() + "@" + client->getIPa() +
-        //                       " MODE " + channel.getName() + " " + modeStr +
-        //                       (adding ? " " + params[3] : "") + "\r\n";
-        //     channel.broadcast(msg);
-        //     return true;
-        // }
         case 'k': {
             // 1) Require a key argument
             if (params.size() < 4) {
@@ -214,6 +200,32 @@ bool Server::applyChannelMode(Client* client, Channel& channel,
         //     channel.broadcast(msg);
         //     return true;
         // }
+        case 'l': {
+            // +l requires a numeric argument; -l does not
+            if (adding) {
+                if (params.size() < 4) {
+                    // not enough params for +l
+                    sendError(client->getFd(), "461", client->getNick(),
+                              "MODE :Not enough parameters");
+                    return true;  // we handled it (with an error), so stop
+                }
+                // parse and apply the limit
+                int limit = std::stoi(params[3]);
+                channel.setClientLimit(limit);
+            } else {
+                // –l clears the limit
+                channel.setClientLimit(-1);
+            }
+
+            // broadcast exactly the MODE command they sent
+            std::string modeLine = modeStr + (adding ? " " + params[3] : "");
+            std::string msg = ":" + client->getNick() + "!~" +
+                              client->getUser() + "@" + client->getIPa() +
+                              " MODE " + channel.getName() + " " + modeLine +
+                              "\r\n";
+            channel.broadcast(msg);
+            return true;
+        }
         // case 'o': {
         //     // requires a nick in params[3]
         //     if (params.size() < 4)

@@ -12,31 +12,55 @@
 #endif
 
 Channel::Channel()
-    : _name(""), _topic(""), _inviteOnly(false), _operator(nullptr) {}
+    : _name(""),
+      _topic(""),
+      _inviteOnly(false),
+      _ops(),
+      _clients(),
+      _operator(nullptr),
+      _invited(),
+      _topicRestricted(false),
+      _key(""),
+      _clientLimit(-1) {}
 
 Channel::Channel(const std::string& name)
-    : _name(name), _topic(""), _inviteOnly(false), _operator(nullptr) {}
+    : _name(name),
+      _topic(""),
+      _inviteOnly(false),
+      _ops(),
+      _clients(),
+      _operator(nullptr),
+      _invited(),
+      _topicRestricted(false),
+      _key(""),
+      _clientLimit(-1) {}
 
-Channel::~Channel() {
-    // No need to deallocate with vector
-}
+Channel::~Channel() {}
 
 Channel::Channel(const Channel& other)
     : _name(other._name),
       _topic(other._topic),
       _inviteOnly(other._inviteOnly),
+      _ops(other._ops),
       _clients(other._clients),
       _operator(other._operator),
-      _invited(other._invited) {}
+      _invited(other._invited),
+      _topicRestricted(other._topicRestricted),
+      _key(other._key),
+      _clientLimit(other._clientLimit) {}
 
 Channel& Channel::operator=(const Channel& other) {
     if (this != &other) {
         _name = other._name;
         _topic = other._topic;
         _inviteOnly = other._inviteOnly;
+        _ops = other._ops;
         _clients = other._clients;
         _operator = other._operator;
         _invited = other._invited;
+        _topicRestricted = other._topicRestricted;
+        _key = other._key;
+        _clientLimit = other._clientLimit;
     }
     return *this;
 }
@@ -197,4 +221,9 @@ void Channel::setTopicRestricted(bool restricted) {
     _topicRestricted = restricted;
 }
 
-bool Channel::isTopicRestricted() { return _topicRestricted; }
+bool Channel::isTopicRestricted() const { return _topicRestricted; }
+
+// Remove an fd from the op list
+void Channel::removeOp(int clientFd) {
+    _ops.erase(std::remove(_ops.begin(), _ops.end(), clientFd), _ops.end());
+}

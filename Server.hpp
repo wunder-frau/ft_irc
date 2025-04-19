@@ -69,8 +69,8 @@ public:
     bool verifyParams(int clientFd, std::vector<std::string>& params);
     int getChannelIndex(std::string name);
     bool isClient(std::string nick);
-    bool hasOpRights(int cfd, std::string channelName);
-    void returnChannelMode(int cfd, Channel& channel);
+    bool hasOpRights(int clientFd, std::string channelName);
+    void returnChannelMode(int clientFd, Channel& channel);
     bool applyChannelMode(Client* client, Channel& channel,
                           const std::string& flag,
                           const std::vector<std::string>& params);
