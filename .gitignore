@@ -34,5 +34,8 @@ Makefile
 *.swp
 *.swo
 
+# Ignore *.md files
+*.md
+
 # Ignore everything except README.md
 !README.md

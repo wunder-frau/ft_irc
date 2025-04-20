@@ -7,7 +7,7 @@ TEST_CHANNEL := test_channel
 TEST_SERVER := test_server
 
 CC := g++
-FLAGS := -std=c++20 -Wall -Wextra -Werror
+FLAGS := -std=c++20 -Wall -Wextra -Werror -g
 INCLUDES := -I. -Imodes
 
 SOURCES := \
@@ -28,14 +28,6 @@ SOURCES := \
 	ServerModes.cpp \
 	modes/ModeHandler.cpp \
 	modes/ModeUtils.cpp
-
-# Windows-specific flags
-ifeq ($(OS),Windows_NT)
-    FLAGS += -D_WIN32_WINNT=0x0601
-    LIBS := -lws2_32
-else
-    LIBS :=
-endif
 
 OBJECTS := $(SOURCES:.cpp=.o)
 HEADERS := \
