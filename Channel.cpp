@@ -151,9 +151,9 @@ bool Channel::kick(Client* sender, Client* target) {
     return true;
 }
 
-// DEBUG: Log the clients in the channel.
+// INFO: Log the clients in the channel.
 void Channel::logClients() const {
-    std::cout << "[DEBUG logClients] Channel: '" << _name << "' has "
+    std::cout << "[INFO] Channel: '" << _name << "' has "
               << _clients.size() << " clients:\n";
     for (size_t i = 0; i < _clients.size(); ++i) {
         Client* c = _clients[i];
@@ -167,12 +167,12 @@ void Channel::logClients() const {
 }
 
 void Channel::broadcast(const std::string& message, Client* except) {
-    std::cout << "[DEBUG broadcast] channel='" << _name
+    std::cout << "[INFO] channel='" << _name
               << "' except_fd=" << (except ? except->getFd() : -1)
               << " message=\"" << message << "\"\n";
 
     for (Client* member : _clients) {
-        std::cout << "[DEBUG broadcast] member ptr=" << member;
+        std::cout << "[INFO] member ptr=" << member;
 
         if (!member) {
             std::cout << " (null) — skipping\n";
@@ -183,7 +183,7 @@ void Channel::broadcast(const std::string& message, Client* except) {
         std::cout << ", nick='" << member->getNick() << "', fd=" << fd << "\n";
 
         if (member == except) {
-            std::cout << "[DEBUG broadcast] skipping sender '"
+            std::cout << "[INFO] skipping sender '"
                       << member->getNick() << "'\n";
             continue;
         }
@@ -198,7 +198,7 @@ void Channel::broadcast(const std::string& message, Client* except) {
         if (sent < 0)
             perror("[ERROR broadcast] send failed");
         else
-            std::cout << "[DEBUG broadcast] sent " << sent << " bytes to '"
+            std::cout << "[INFO] sent " << sent << " bytes to '"
                       << member->getNick() << "' (fd=" << fd << ")\n";
     }
 }

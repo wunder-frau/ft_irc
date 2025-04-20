@@ -97,7 +97,7 @@ void Server::authenticate(Client& client, const std::string& arg,
     if (!client.getPassword().empty() && !client.getNick().empty() &&
         !client.getUser().empty()) {
         std::string msg = ":ft_irc 001 " + client.getNick() +
-                          " :Welcome to the IRC Network, " + client.getNick() +
+                          " :Registration successful. You connected to the IRC Network, " + client.getNick() +
                           "!\r\n";
         send(client.getFd(), msg.c_str(), msg.length(), 0);
 

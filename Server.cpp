@@ -120,6 +120,10 @@ void Server::acceptClient() {
     std::cout << "[INFO] New Client created: fd=" << client_fd
               << ", ip=" << inet_ntoa(client_addr.sin_addr) << std::endl;
     std::cout << "Accepted client fd: " << client_fd << std::endl;
+
+    // Send welcome message to the connecting client
+    std::string welcome = "Welcome to the IRC server. please provide PASS, USER, NICK:\r\n";
+    send(client_fd, welcome.c_str(), welcome.length(), 0);
 }
 
 void Server::receiveData(int clientFd, size_t index) {
