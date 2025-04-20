@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "ModeUtils.hpp"
 
 #include "Server.hpp"

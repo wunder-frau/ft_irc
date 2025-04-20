@@ -5,7 +5,7 @@
 #include <deque>
 #include <string>
 #include <vector>
-
+#include <unordered_map>
 #include "Channel.hpp"
 #include "Client.hpp"
 
