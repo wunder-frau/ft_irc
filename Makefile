@@ -11,23 +11,23 @@ FLAGS := -std=c++20 -Wall -Wextra -Werror
 INCLUDES := -I. -Imodes
 
 SOURCES := \
-	ircserv.cpp \
-	Server.cpp \
-	Client.cpp \
-	Channel.cpp \
-	clientRegistration.cpp \
-	commands/nick.cpp \
-	commands/notice.cpp \
-	commands/quit.cpp \
-	commands/privmsg.cpp \
-	commands/join.cpp \
-	commands/mode.cpp \
-	utils.cpp \
-	ServerChannel.cpp \
-	regexRules.cpp \
-	ServerModes.cpp \
-	modes/ModeHandler.cpp \
-	modes/ModeUtils.cpp
+    ircserv.cpp \
+    Server.cpp \
+    Client.cpp \
+    Channel.cpp \
+    clientRegistration.cpp \
+    commands/nick.cpp \
+    commands/notice.cpp \
+    commands/quit.cpp \
+    commands/privmsg.cpp \
+    commands/join.cpp \
+    commands/mode.cpp \
+    utils.cpp \
+    ServerChannel.cpp \
+    regexRules.cpp \
+    ServerModes.cpp \
+    modes/ModeHandler.cpp \
+    modes/ModeUtils.cpp
 
 # Windows-specific flags
 ifeq ($(OS),Windows_NT)
@@ -39,19 +39,22 @@ endif
 
 OBJECTS := $(SOURCES:.cpp=.o)
 HEADERS := \
-	Server.hpp \
-	Client.hpp \
-	Channel.hpp \
-	commands/quit.hpp \
-	commands/privmsg.hpp \
-	commands/notice.hpp \
-	commands/nick.hpp \
-	commands/join.hpp \
-	commands/mode.cpp \
-	utils.hpp \
-	regexRules.hpp \
-	modes/ModeHandler.hpp \
-	modes/ModeUtils.hpp
+    Server.hpp \
+    Client.hpp \
+    Channel.hpp \
+    commands/quit.hpp \
+    commands/privmsg.hpp \
+    commands/notice.hpp \
+    commands/nick.hpp \
+    commands/join.hpp \
+    commands/mode.cpp \
+    utils.hpp \
+    regexRules.hpp \
+    modes/ModeHandler.hpp \
+    modes/ModeUtils.hpp
+
+# Exclude ircserv.o (contains main()) from test builds.
+TEST_APP_OBJECTS := $(filter-out ircserv.o, $(OBJECTS))
 
 # Test sources and objects
 TEST_SOURCES := Channel.cpp Server.cpp Client.cpp clientRegistration.cpp ServerChannel.cpp nick.cpp test_channels.cpp
@@ -77,23 +80,23 @@ all: $(NAME)
 $(NAME): $(OBJECTS)
 	$(CC) $(FLAGS) $(INCLUDES) $(OBJECTS) -o $(NAME) $(LIBS)
 
-$(TEST): $(TEST_OBJECTS)
-	$(CC) $(FLAGS) $(INCLUDES) $(TEST_OBJECTS) -o $(TEST) $(LIBS)
+$(TEST): $(TEST_APP_OBJECTS) test_channels.o
+	$(CC) $(FLAGS) $(INCLUDES) $(TEST_APP_OBJECTS) test_channels.o -o $(TEST) $(LIBS)
 
-$(TEST_CLIENT): $(TEST_CLIENT_OBJECTS)
-	$(CC) $(FLAGS) $(INCLUDES) $(TEST_CLIENT_OBJECTS) -o $(TEST_CLIENT) $(LIBS)
+$(TEST_CLIENT): $(TEST_APP_OBJECTS) main_test_client.o
+	$(CC) $(FLAGS) $(INCLUDES) $(TEST_APP_OBJECTS) main_test_client.o -o $(TEST_CLIENT) $(LIBS)
 
-$(TEST_JOIN): $(TEST_JOIN_OBJECTS)
-	$(CC) $(FLAGS) $(INCLUDES) $(TEST_JOIN_OBJECTS) -o $(TEST_JOIN) $(LIBS)
+$(TEST_JOIN): $(TEST_APP_OBJECTS) main_test_join.o
+	$(CC) $(FLAGS) $(INCLUDES) $(TEST_APP_OBJECTS) main_test_join.o -o $(TEST_JOIN) $(LIBS)
 
-$(TEST_NICK): $(TEST_NICK_OBJECTS)
-	$(CC) $(FLAGS) $(INCLUDES) $(TEST_NICK_OBJECTS) -o $(TEST_NICK) $(LIBS)
+$(TEST_NICK): $(TEST_APP_OBJECTS) main_test_nick.o
+	$(CC) $(FLAGS) $(INCLUDES) $(TEST_APP_OBJECTS) main_test_nick.o -o $(TEST_NICK) $(LIBS)
 
-$(TEST_CHANNEL): $(TEST_CHANNEL_OBJECTS)
-	$(CC) $(FLAGS) $(INCLUDES) $(TEST_CHANNEL_OBJECTS) -o $(TEST_CHANNEL) $(LIBS)
+$(TEST_CHANNEL): $(TEST_APP_OBJECTS) main_test_channel.o
+	$(CC) $(FLAGS) $(INCLUDES) $(TEST_APP_OBJECTS) main_test_channel.o -o $(TEST_CHANNEL) $(LIBS)
 
-$(TEST_SERVER): $(TEST_SERVER_OBJECTS)
-	$(CC) $(FLAGS) $(INCLUDES) $(TEST_SERVER_OBJECTS) -o $(TEST_SERVER) $(LIBS)
+$(TEST_SERVER): $(TEST_APP_OBJECTS) main_test_server.o
+	$(CC) $(FLAGS) $(INCLUDES) $(TEST_APP_OBJECTS) main_test_server.o -o $(TEST_SERVER) $(LIBS)
 
 %.o: %.cpp $(HEADERS)
 	$(CC) $(FLAGS) $(INCLUDES) -c $< -o $@

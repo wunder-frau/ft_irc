@@ -14,6 +14,19 @@ ssize_t send(int socket, const void* buffer, size_t length, int /*flags*/) {
 }
 
 int main() {
+    try {
+        // Assume Channel has a constructor taking a channel name.
+        Channel channel("#test");
+        Client client(3, "127.0.0.3");
+        client.setNickname("ChannelUser");
+        channel.addClient(&client);
+
+        std::cout << "Channel " << channel.getName() << " has "
+                  << channel.getClients().size() << " client(s)." << std::endl;
+    } catch (const std::exception &e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+    }
+
     // Create a server instance
     Server server(6667, "secret");
     

@@ -3,6 +3,13 @@
 #include "Server.hpp"
 
 int main() {
+    try {
+        Server server(6667, "secret");
+        std::cout << "[Test] Server created on port " << server.getPort() << std::endl;
+    } catch (const std::exception &e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+    }
+
     std::cout << "[Step 1] Creating Server instance on port 6667 with password "
                  "'secret'.\n";
     Server server(6667, "secret");

@@ -16,8 +16,7 @@ int main() {
     std::cout << "Nickname: " << client1.getNick() << std::endl;
     std::cout << "Password: " << client1.getPassword() << std::endl;
     std::cout << "Username: " << client1.getUser() << std::endl;
-    std::cout << "Registered: " << (client1.isRegistered() ? "Yes" : "No")
-              << std::endl;
+    std::cout << "Registered: " << (client1.isRegistered() ? "Yes" : "No") << std::endl;
 
     Client client2(client1);
     std::cout << "\nCopied Client (client2) Details:" << std::endl;
@@ -26,8 +25,7 @@ int main() {
     std::cout << "Nickname: " << client2.getNick() << std::endl;
     std::cout << "Password: " << client2.getPassword() << std::endl;
     std::cout << "Username: " << client2.getUser() << std::endl;
-    std::cout << "Registered: " << (client2.isRegistered() ? "Yes" : "No")
-              << std::endl;
+    std::cout << "Registered: " << (client2.isRegistered() ? "Yes" : "No") << std::endl;
 
     Client client3;
     client3 = client1;
@@ -37,8 +35,7 @@ int main() {
     std::cout << "Nickname: " << client3.getNick() << std::endl;
     std::cout << "Password: " << client3.getPassword() << std::endl;
     std::cout << "Username: " << client3.getUser() << std::endl;
-    std::cout << "Registered: " << (client3.isRegistered() ? "Yes" : "No")
-              << std::endl;
+    std::cout << "Registered: " << (client3.isRegistered() ? "Yes" : "No") << std::endl;
 
     return 0;
 }

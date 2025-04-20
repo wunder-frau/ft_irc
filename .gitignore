@@ -36,3 +36,5 @@ Makefile
 
 # Ignore everything except README.md
 !README.md
+
+test_*

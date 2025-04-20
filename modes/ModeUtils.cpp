@@ -1,5 +1,5 @@
 #include "ModeUtils.hpp"
-
+#include <algorithm>
 #include "Server.hpp"
 #include "utils.hpp"
 
@@ -9,8 +9,17 @@ bool isValidKey(const std::string& s) {
 
 bool setKey(Server& server, int clientFd, Channel& channel,
             const std::vector<std::string>& params) {
+    // Ensure params[2] exists
+    if (params.size() < 3) {
+        sendError(clientFd, "461",
+                  server.getClientObjByFd(clientFd)->getNick(),
+                  "MODE :Not enough parameters");
+        return false;
+    }
+
     bool adding = (params[2][0] == '+');
     if (adding) {
+        // Ensure params[3] exists for adding a key
         if (params.size() < 4) {
             sendError(clientFd, "461",
                       server.getClientObjByFd(clientFd)->getNick(),
@@ -26,9 +35,18 @@ bool setKey(Server& server, int clientFd, Channel& channel,
         }
         channel.setKey(key);
     } else {
+        // Removing the key
         channel.setKey("");
+
+        // Send confirmation message for key removal
+        Client* client = server.getClientObjByFd(clientFd);
+        std::string msg = ":" + client->getNick() + "!~" + client->getUser() +
+                          "@" + client->getIPa() + " MODE " +
+                          channel.getName() + " -k\r\n";
+        channel.broadcast(msg);
     }
 
+    // Broadcast the mode change
     Client* client = server.getClientObjByFd(clientFd);
     std::string modeStr = params[2] + (adding ? " " + params[3] : "");
     std::string msg = ":" + client->getNick() + "!~" + client->getUser() + "@" +
@@ -63,8 +81,12 @@ int getChannelIndex(Server& server, const std::string& name) {
 
 bool verifyParams(Server& server, int clientFd,
                   std::vector<std::string>& params) {
-    if (params.size() < 2)
+    if (params.size() < 2) {
+        sendError(clientFd, "461",
+                  server.getClientObjByFd(clientFd)->getNick(),
+                  "MODE :Not enough parameters");
         return false;
+    }
 
     std::string& target = params[1];
 
@@ -76,8 +98,12 @@ bool verifyParams(Server& server, int clientFd,
     if (params.size() > 2) {
         static const std::unordered_set<std::string> validFlags = {
             "+i", "-i", "+t", "-t", "+k", "-k", "+o", "-o", "+l", "-l"};
-        if (!validFlags.contains(params[2]))
+        if (!validFlags.contains(params[2])) {
+            sendError(clientFd, "472",
+                      server.getClientObjByFd(clientFd)->getNick(),
+                      params[2] + " :is an unknown mode flag");
             return false;
+        }
     }
 
     return true;

@@ -44,6 +44,27 @@ int main() {
         std::cout << "\nProcessing join command: " << joinCmd2 << std::endl;
         server.handleJoin(1, joinCmd2);
 
+        // Create a new client with:
+        // File descriptor: 2 and IP address "192.168.0.2"
+        Client client2(2, "192.168.0.2");
+        client2.setNickname("Joiner");
+        client2.setUsername("joinUser");
+
+        // Add the new client to the server.
+        server.addClient(client2);
+
+        // Simulate a JOIN command.
+        std::string joinCommand = "JOIN #testChannel";
+        server.dispatchCommand(joinCommand, 2);
+
+        // Verify that the channel was created and the client joined.
+        Channel* channel = server.findChannel("#testChannel");
+        if (channel)
+            std::cout << "Channel " << channel->getName() << " created with "
+                      << channel->getClients().size() << " client(s)." << std::endl;
+        else
+            std::cout << "Channel join failed." << std::endl;
+
         // Optionally, add more tests or print additional server/channel status
         // here.
     } catch (const std::exception& e) {
