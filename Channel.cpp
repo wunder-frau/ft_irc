@@ -100,6 +100,7 @@ void Channel::addClient(Client* client) {
         // 2) … and record their fd in the ops list:
         _ops.push_back(client->getFd());
     }
+    logClients();
 }
 
 // Remove a client from the channel.
@@ -150,47 +151,55 @@ bool Channel::kick(Client* sender, Client* target) {
     return true;
 }
 
+// DEBUG: Log the clients in the channel.
+void Channel::logClients() const {
+    std::cout << "[DEBUG logClients] Channel: '" << _name << "' has "
+              << _clients.size() << " clients:\n";
+    for (size_t i = 0; i < _clients.size(); ++i) {
+        Client* c = _clients[i];
+        if (!c) {
+            std::cout << "  [" << i << "] NULL client pointer\n";
+        } else {
+            std::cout << "  [" << i << "] ptr=" << c << " nick='"
+                      << c->getNick() << "' fd=" << c->getFd() << "\n";
+        }
+    }
+}
+
 void Channel::broadcast(const std::string& message, Client* except) {
-    // 0) Dump the overall call
     std::cout << "[DEBUG broadcast] channel='" << _name
               << "' except_fd=" << (except ? except->getFd() : -1)
-              << " message=\"" << message << "\"" << std::endl;
+              << " message=\"" << message << "\"\n";
 
     for (Client* member : _clients) {
-        // 1) Null‐pointer check
-        if (member == nullptr) {
-            std::cout << "[DEBUG broadcast] skipping null member pointer"
-                      << std::endl;
+        std::cout << "[DEBUG broadcast] member ptr=" << member;
+
+        if (!member) {
+            std::cout << " (null) — skipping\n";
             continue;
         }
 
         int fd = member->getFd();
-        std::cout << "[DEBUG broadcast] considering member '"
-                  << member->getNick() << "' fd=" << fd << std::endl;
+        std::cout << ", nick='" << member->getNick() << "', fd=" << fd << "\n";
 
-        // 2) Don’t echo to the ‘except’ (sender)
         if (member == except) {
-            std::cout << "[DEBUG broadcast] skipping except member '"
-                      << member->getNick() << "'" << std::endl;
+            std::cout << "[DEBUG broadcast] skipping sender '"
+                      << member->getNick() << "'\n";
             continue;
         }
 
-        // 3) Filter out invalid file descriptors
         if (fd <= 0) {
             std::cout << "[WARNING broadcast] invalid fd for '"
-                      << member->getNick() << "': " << fd << std::endl;
+                      << member->getNick() << "': " << fd << "\n";
             continue;
         }
 
-        // 4) Do the send and log how many bytes went out
         ssize_t sent = ::send(fd, message.c_str(), message.size(), 0);
-        if (sent < 0) {
-            std::perror("[ERROR broadcast] send() failed");
-        } else {
+        if (sent < 0)
+            perror("[ERROR broadcast] send failed");
+        else
             std::cout << "[DEBUG broadcast] sent " << sent << " bytes to '"
-                      << member->getNick() << "' (fd=" << fd << ")"
-                      << std::endl;
-        }
+                      << member->getNick() << "' (fd=" << fd << ")\n";
     }
 }
 

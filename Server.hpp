@@ -2,6 +2,7 @@
 
 #include <poll.h>
 
+#include <deque>
 #include <string>
 #include <vector>
 
@@ -26,7 +27,9 @@ public:
     size_t getClientIndex(int clientFd);
     Client* getClientObjByFd(int fd);
     Client* getClientObjByNick(const std::string& nick);
-    const std::vector<Client>& getClients() const { return _clients; }
+    std::vector<Client> getClients() const {
+        return std::vector<Client>(_clients.begin(), _clients.end());
+    }
 
     bool isRegistered(int clientFd);
     bool isUniqueNick(std::string nick);
@@ -75,7 +78,8 @@ private:
     int _port;
     std::string _password;
 
-    std::vector<Client> _clients;
+    // std::vector<Client> _clients;
+    std::deque<Client> _clients;
     std::vector<pollfd> _poll_fds;
     std::vector<Channel> _channels;
     std::unordered_map<int, std::string> _recvBuffers;
