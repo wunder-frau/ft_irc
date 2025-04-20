@@ -42,29 +42,23 @@ bool Server::channelExists(const std::string& name) {
     return false;
 }
 
-// Create a new channel with the given name and creator
 void Server::createChannel(const std::string& name, Client* creator) {
-    if (creator == nullptr)
+    if (!creator)
         return;
 
     std::string channelName = trimWhitespace(name);
     std::cout << "[DEBUG] Creating new channel with name '" << channelName
-              << "'" << std::endl;
+              << "'\n";
 
     Channel newChannel(channelName);
+    newChannel.addClient(creator);
+
     _channels.push_back(newChannel);
 
-    // Debug: Print all channels after creation
-    std::cout << "[DEBUG] Channels after creation:" << std::endl;
+    std::cout << "[DEBUG] Channels after creation:\n";
     for (size_t i = 0; i < _channels.size(); ++i) {
-        std::cout << "[DEBUG]   " << i << ": '" << _channels[i].getName() << "'"
-                  << std::endl;
-    }
-
-    // Get the newly created channel and add the creator
-    Channel* channel = findChannel(channelName);
-    if (channel) {
-        channel->addClient(creator);
+        std::cout << "[DEBUG]   " << i << ": '" << _channels[i].getName()
+                  << "'\n";
     }
 }
 
@@ -98,91 +92,107 @@ void Server::removeClientFromChannels(int clientFd) {
 // JOIN command handler
 void Server::handleJoin(int clientFd, const std::string& arg) {
     Client* client = getClientObjByFd(clientFd);
-    if (!client) {
+    std::cout << "[DEBUG] handleJoin: fd=" << clientFd << ", arg='" << arg
+              << "'\n";
+
+    if (!client || !client->isRegistered()) {
+        std::cout
+            << "[DEBUG] Client is null or not registered, skipping JOIN.\n";
         return;
     }
 
-    // Parse JOIN command
     std::vector<std::string> params;
     parser(arg, params, ' ');
+    std::cout << "[DEBUG] Parsed JOIN params count = " << params.size() << "\n";
 
     if (params.size() < 2) {
+        std::cout << "[ERROR] Not enough parameters for JOIN command.\n";
         sendError(clientFd, "461", client->getNick(),
                   "JOIN :Not enough parameters");
         return;
     }
 
-    // Extract channel name(s)
     std::vector<std::string> channels;
     parser(params[1], channels, ',');
+    std::cout << "[DEBUG] Parsed channels: ";
+    for (size_t i = 0; i < channels.size(); ++i)
+        std::cout << "'" << channels[i] << "' ";
+    std::cout << "\n";
 
-    // Extract keys if provided
     std::vector<std::string> keys;
     if (params.size() >= 3) {
         parser(params[2], keys, ',');
+        std::cout << "[DEBUG] Parsed keys: ";
+        for (size_t i = 0; i < keys.size(); ++i)
+            std::cout << "'" << keys[i] << "' ";
+        std::cout << "\n";
     }
 
-    // Join each channel
     for (size_t i = 0; i < channels.size(); ++i) {
         std::string channelName = trimWhitespace(channels[i]);
+        std::cout << "[DEBUG] Processing channel: '" << channelName << "'\n";
 
-        // Validate channel name format (should start with #)
         if (channelName.empty() || channelName[0] != '#') {
+            std::cout << "[ERROR] Invalid channel name: '" << channelName
+                      << "'\n";
             sendError(clientFd, "403", client->getNick(),
                       channelName + " :No such channel");
             continue;
         }
 
-        // Get key if provided
         std::string key = (i < keys.size()) ? trimWhitespace(keys[i]) : "";
-
-        // Check if channel exists
         Channel* channel = findChannel(channelName);
+
         if (channel) {
-            // Channel exists, check if client can join
+            std::cout << "[DEBUG] Channel found: '" << channelName << "'\n";
+
             if (channel->isInviteOnly() &&
                 !channel->isInvited(client->getNick())) {
+                std::cout << "[DEBUG] Channel is invite-only and client not "
+                             "invited.\n";
                 sendError(clientFd, "473", client->getNick(),
                           channelName + " :Cannot join channel (+i)");
                 continue;
             }
 
-            // If client is already in the channel, do nothing
             if (channel->isInChannel(client)) {
+                std::cout << "[DEBUG] Client already in channel, skipping.\n";
                 continue;
             }
 
-            // Key‑protected channels: must supply correct key
             if (channel->isKeyed() && key != channel->getKey()) {
+                std::cout << "[ERROR] Provided key does not match for channel '"
+                          << channelName << "'\n";
                 sendError(clientFd, "475", client->getNick(),
                           channelName + " :Cannot join channel (+k)");
                 continue;
             }
 
-            // Enforce +l (user limit)
             int limit = channel->getClientLimit();
             if (limit > -1 &&
                 channel->getClients().size() >= static_cast<size_t>(limit)) {
+                std::cout << "[ERROR] Channel is full (limit reached): "
+                          << limit << "\n";
                 sendError(clientFd, "471", client->getNick(),
                           channelName + " :Cannot join channel (+l)");
                 continue;
             }
 
-            // Add client to channel
+            std::cout << "[DEBUG] Adding client to channel '" << channelName
+                      << "'\n";
             channel->addClient(client);
 
-            // First joiner becomes channel operator
             if (channel->getClients().size() == 1) {
+                std::cout
+                    << "[DEBUG] First client in channel, assigning operator.\n";
                 channel->addOp(clientFd);
             }
 
-            // Send JOIN message to all channel members
             std::string joinMsg = ":" + client->getNick() + "!~" +
                                   client->getUser() + "@" + client->getIPa() +
                                   " JOIN " + channelName + "\r\n";
-            channel->broadcast(joinMsg);
+            channel->broadcast(joinMsg, client);
 
-            // Send topic if available
             if (!channel->getTopic().empty()) {
                 std::string topicMsg = ":ft_irc 332 " + client->getNick() +
                                        " " + channelName + " :" +
@@ -190,39 +200,29 @@ void Server::handleJoin(int clientFd, const std::string& arg) {
                 send(clientFd, topicMsg.c_str(), topicMsg.length(), 0);
             }
 
-            // Send user list
             std::string namesMsg =
                 ":ft_irc 353 " + client->getNick() + " = " + channelName + " :";
             for (const auto& member : channel->getClients()) {
-                if (channel->isOperator(member)) {
+                if (channel->isOperator(member))
                     namesMsg += "@";
-                }
                 namesMsg += member->getNick() + " ";
             }
             namesMsg += "\r\n";
             send(clientFd, namesMsg.c_str(), namesMsg.length(), 0);
 
-            // End of names list
             std::string endNamesMsg = ":ft_irc 366 " + client->getNick() + " " +
                                       channelName + " :End of /NAMES list.\r\n";
             send(clientFd, endNamesMsg.c_str(), endNamesMsg.length(), 0);
         } else {
-            // Channel doesn't exist, create it
+            std::cout << "[DEBUG] Channel not found. Creating channel: '"
+                      << channelName << "'\n";
             createChannel(channelName, client);
-            // New channel, first member is operator
-            {
-                Channel* newCh = getChannelByName(channelName);
-                if (newCh)
-                    newCh->addOp(clientFd);
-            }
 
-            // Send JOIN message to the client
             std::string joinMsg = ":" + client->getNick() + "!~" +
                                   client->getUser() + "@" + client->getIPa() +
                                   " JOIN " + channelName + "\r\n";
             send(clientFd, joinMsg.c_str(), joinMsg.length(), 0);
 
-            // Send initial channel info
             std::string namesMsg = ":ft_irc 353 " + client->getNick() + " = " +
                                    channelName + " :@" + client->getNick() +
                                    "\r\n";
@@ -482,92 +482,6 @@ void Server::handleKick(int clientFd, const std::string& arg) {
     channel->removeClient(target);
 }
 
-// // TOPIC command handler
-// void Server::handleTopic(int clientFd, const std::string& arg) {
-//     Client* client = getClientObjByFd(clientFd);
-//     if (!client) {
-//         return;
-//     }
-
-//     // Parse TOPIC command
-//     std::vector<std::string> params;
-//     parser(arg, params, ' ');
-
-//     if (params.size() < 2) {
-//         sendError(clientFd, "461", client->getNick(),
-//                   "TOPIC :Not enough parameters");
-//         return;
-//     }
-
-//     std::string channelName = trimWhitespace(params[1]);
-
-//     // Debug: Print all channel names in the vector
-//     std::cout << "[DEBUG] Looking for channel '" << channelName << "' in "
-//               << _channels.size() << " channels:" << std::endl;
-//     for (size_t i = 0; i < _channels.size(); ++i) {
-//         std::cout << "[DEBUG]   " << i << ": '" << _channels[i].getName() <<
-//         "'"
-//                   << std::endl;
-//     }
-
-//     // Find channel
-//     Channel* channel = findChannel(channelName);
-//     if (!channel) {
-//         sendError(clientFd, "403", client->getNick(),
-//                   channelName + " :No such channel");
-//         return;
-//     }
-
-//     // Check if client is in the channel
-//     if (!channel->isInChannel(client)) {
-//         sendError(clientFd, "442", client->getNick(),
-//                   channelName + " :You're not on that channel");
-//         return;
-//     }
-
-//     // If no topic is provided, return the current topic
-//     if (params.size() == 2) {
-//         if (channel->getTopic().empty()) {
-//             std::string noTopicMsg = ":ft_irc 331 " + client->getNick() + " "
-//             +
-//                                      channelName + " :No topic is set\r\n";
-//             send(clientFd, noTopicMsg.c_str(), noTopicMsg.length(), 0);
-//         } else {
-//             std::string topicMsg = ":ft_irc 332 " + client->getNick() + " " +
-//                                    channelName + " :" + channel->getTopic() +
-//                                    "\r\n";
-//             send(clientFd, topicMsg.c_str(), topicMsg.length(), 0);
-//         }
-//         return;
-//     }
-
-//     // Setting a new topic requires operator privileges
-//     if (!channel->isOperator(client)) {
-//         sendError(clientFd, "482", client->getNick(),
-//                   channelName + " :You're not channel operator");
-//         return;
-//     }
-
-//     // Extract new topic (combine all remaining parameters)
-//     std::string newTopic = "";
-//     for (size_t i = 2; i < params.size(); ++i) {
-//         newTopic += params[i] + " ";
-//     }
-//     // Remove leading colon if present
-//     if (!newTopic.empty() && newTopic[0] == ':') {
-//         newTopic = newTopic.substr(1);
-//     }
-
-//     // Set the new topic
-//     channel->setTopic(newTopic);
-
-//     // Broadcast topic change to all channel members
-//     std::string topicChangeMsg =
-//         ":" + client->getNick() + "!~" + client->getUser() + "@" +
-//         client->getIPa() + " TOPIC " + channelName + " :" + newTopic +
-//         "\r\n";
-//     channel->broadcast(topicChangeMsg);
-// }
 void Server::handleTopic(int clientFd, const std::string& arg) {
     Client* client = getClientObjByFd(clientFd);
     if (!client)

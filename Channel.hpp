@@ -81,6 +81,8 @@ public:
     void setClientLimit(int limit) { _clientLimit = limit; }
     int getClientLimit() const { return _clientLimit; }
 
+    void logClients() const;
+
 private:
     std::string _name;
     std::string _topic;

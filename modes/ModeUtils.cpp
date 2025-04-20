@@ -45,9 +45,8 @@ bool hasOpRights(Server& server, int clientFd, const std::string& channelName) {
 }
 
 bool isClient(Server& server, const std::string& nick) {
-    for (std::vector<Client>::const_iterator it = server.getClients().begin();
-         it != server.getClients().end(); ++it) {
-        if (it->getNick() == nick)
+    for (const Client& client : server.getClients()) {
+        if (client.getNick() == nick)
             return true;
     }
     return false;

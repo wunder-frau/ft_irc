@@ -1,11 +1,13 @@
 #include "Server.hpp"
 
+#include <arpa/inet.h>  // <-- Needed for inet_ntoa
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
 #include <cstring>
+#include <deque>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
@@ -21,20 +23,17 @@
 
 Server::Server(int port, std::string password)
     : _port(port), _password(password) {
-    // Create socket
     _server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (_server_fd < 0) {
         perror("socket");
         throw std::runtime_error("Failed to create socket");
     }
 
-    // Set to non-blocking
     if (fcntl(_server_fd, F_SETFL, O_NONBLOCK) < 0) {
         perror("fcntl");
         throw std::runtime_error("Failed to set socket to non-blocking");
     }
 
-    // Reuse address
     int opt = 1;
     if (setsockopt(_server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) <
         0) {
@@ -42,7 +41,6 @@ Server::Server(int port, std::string password)
         throw std::runtime_error("Failed to set socket options");
     }
 
-    // Bind
     sockaddr_in addr = {};
     addr.sin_family = AF_INET;
     addr.sin_port = htons(_port);
@@ -53,13 +51,11 @@ Server::Server(int port, std::string password)
         throw std::runtime_error("Failed to bind");
     }
 
-    // Listen
     if (listen(_server_fd, SOMAXCONN) < 0) {
         perror("listen");
         throw std::runtime_error("Failed to listen");
     }
 
-    // Add listening socket to poll list
     pollfd pfd = {};
     pfd.fd = _server_fd;
     pfd.events = POLLIN;
@@ -79,12 +75,11 @@ Server& Server::operator=(const Server& other) {
         _port = other.getPort();
         _password = other.getPassword();
     }
-    return (*this);
+    return *this;
 }
 
 void Server::run() {
     std::cout << "Server running on port " << _port << std::endl;
-
     while (true) {
         int ret = poll(_poll_fds.data(), _poll_fds.size(), -1);
         if (ret < 0) {
@@ -113,16 +108,17 @@ void Server::acceptClient() {
         return;
     }
 
-    fcntl(client_fd, F_SETFL, O_NONBLOCK);  // required for non-blocking sockets
+    fcntl(client_fd, F_SETFL, O_NONBLOCK);
 
-    Client new_client(client_fd, client_addr);
-    addClient(new_client);
+    _clients.emplace_back(client_fd, client_addr);
 
     pollfd pfd = {};
     pfd.fd = client_fd;
     pfd.events = POLLIN;
     _poll_fds.push_back(pfd);
 
+    std::cout << "[INFO] New Client created: fd=" << client_fd
+              << ", ip=" << inet_ntoa(client_addr.sin_addr) << std::endl;
     std::cout << "Accepted client fd: " << client_fd << std::endl;
 }
 
@@ -137,17 +133,15 @@ void Server::receiveData(int clientFd, size_t index) {
         eraseClient(clientFd, &index);
         return;
     }
+
     auto& pending = _recvBuffers[clientFd];
     pending.append(buffer, n);
     size_t pos;
     while ((pos = pending.find('\n')) != std::string::npos) {
         std::string line = pending.substr(0, pos);
-        // drop the "\r" if it’s CRLF
         if (!line.empty() && line.back() == '\r')
             line.pop_back();
-        // remove this line + the '\n' from pending buffer
         pending.erase(0, pos + 1);
-        // Now we have exactly one IRC command line:
         if (!isRegistered(clientFd)) {
             registerClient(clientFd, line, &index);
         } else {
@@ -168,8 +162,7 @@ void Server::eraseClient(int clientFd, size_t* clientIndex) {
 }
 
 bool Server::isRegistered(int clientFd) {
-    for (std::vector<Client>::iterator it = _clients.begin();
-         it != _clients.end(); ++it) {
+    for (auto it = _clients.begin(); it != _clients.end(); ++it) {
         if (it->getFd() == clientFd)
             return it->isRegistered();
     }
@@ -177,8 +170,7 @@ bool Server::isRegistered(int clientFd) {
 }
 
 bool Server::isUniqueNick(std::string nick) {
-    for (std::vector<Client>::iterator it = _clients.begin();
-         it != _clients.end(); ++it) {
+    for (auto it = _clients.begin(); it != _clients.end(); ++it) {
         if (it->getNick() == nick)
             return false;
     }
@@ -196,12 +188,11 @@ Client* Server::getClientObjByFd(int fd) {
 }
 
 Client* Server::getClientObjByNick(const std::string& nick) {
-    for (std::vector<Client>::iterator it = _clients.begin();
-         it != _clients.end(); ++it) {
+    for (auto it = _clients.begin(); it != _clients.end(); ++it) {
         if (it->getNick() == nick)
             return &(*it);
     }
-    return NULL;
+    return nullptr;
 }
 
 size_t Server::getClientIndex(int clientFd) {
@@ -214,13 +205,11 @@ size_t Server::getClientIndex(int clientFd) {
 }
 
 void Server::dispatchCommand(const std::string& fullMessage, int clientFd) {
-    // Split on '\n' and trim trailing '\r'
     std::istringstream stream(fullMessage);
     std::string line;
     while (std::getline(stream, line)) {
-        if (!line.empty() && line.back() == '\r') {
+        if (!line.empty() && line.back() == '\r')
             line.pop_back();
-        }
         if (!line.empty() && line[0] == ':')
             continue;
 
@@ -260,22 +249,14 @@ void Server::dispatchCommand(const std::string& fullMessage, int clientFd) {
 std::vector<Channel>& Server::getChannels() { return _channels; }
 
 Channel* Server::getChannelByName(const std::string& name) {
-    // Trim whitespace from search name
     std::string searchName = name;
-    while (!searchName.empty() &&
-           (searchName.back() == '\n' || searchName.back() == '\r' ||
-            searchName.back() == ' ' || searchName.back() == '\t')) {
+    while (!searchName.empty() && std::isspace(searchName.back()))
         searchName.pop_back();
-    }
 
     for (size_t i = 0; i < _channels.size(); ++i) {
-        // Trim whitespace from channel name
         std::string channelName = _channels[i].getName();
-        while (!channelName.empty() &&
-               (channelName.back() == '\n' || channelName.back() == '\r' ||
-                channelName.back() == ' ' || channelName.back() == '\t')) {
+        while (!channelName.empty() && std::isspace(channelName.back()))
             channelName.pop_back();
-        }
 
         if (channelName == searchName)
             return &_channels[i];
@@ -284,18 +265,13 @@ Channel* Server::getChannelByName(const std::string& name) {
 }
 
 Channel* Server::createOrGetChannel(const std::string& name) {
-    // Trim whitespace from channel name
-    std::string channelName = name;
-    while (!channelName.empty() &&
-           (channelName.back() == '\n' || channelName.back() == '\r' ||
-            channelName.back() == ' ' || channelName.back() == '\t')) {
-        channelName.pop_back();
-    }
+    std::string trimmed = name;
+    while (!trimmed.empty() && std::isspace(trimmed.back())) trimmed.pop_back();
 
-    Channel* existing = getChannelByName(channelName);
+    Channel* existing = getChannelByName(trimmed);
     if (existing)
         return existing;
 
-    _channels.push_back(Channel(channelName));
+    _channels.push_back(Channel(trimmed));
     return &_channels.back();
 }
