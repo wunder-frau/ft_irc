@@ -213,6 +213,13 @@ void Server::handleJoin(int clientFd, const std::string& arg) {
             std::string endNamesMsg = ":ft_irc 366 " + client->getNick() + " " +
                                       channelName + " :End of /NAMES list.\r\n";
             send(clientFd, endNamesMsg.c_str(), endNamesMsg.length(), 0);
+
+            // INFO message
+            std::string infoMsg = "[" + channelName + " INFO]: members: ";
+            for (const auto& member : channel->getClients())
+                infoMsg += member->getNick() + " ";
+            infoMsg += "\r\n";
+            send(clientFd, infoMsg.c_str(), infoMsg.length(), 0);
         } else {
             std::cout << "[DEBUG] Channel not found. Creating channel: '"
                       << channelName << "'\n";
@@ -231,6 +238,12 @@ void Server::handleJoin(int clientFd, const std::string& arg) {
             std::string endNamesMsg = ":ft_irc 366 " + client->getNick() + " " +
                                       channelName + " :End of /NAMES list.\r\n";
             send(clientFd, endNamesMsg.c_str(), endNamesMsg.length(), 0);
+            
+            std::string infoMsg = "[" + channelName + " INFO]: members: ";
+            // Only one member exists (the creator) so far:
+            infoMsg += client->getNick() + " ";
+            infoMsg += "\r\n";
+            send(clientFd, infoMsg.c_str(), infoMsg.length(), 0);
         }
     }
 }

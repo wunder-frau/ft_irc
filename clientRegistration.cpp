@@ -106,7 +106,7 @@ void Server::authenticate(Client& client, const std::string& arg,
         send(client.getFd(), msg.c_str(), msg.length(), 0);
 
         msg = ":ft_irc 005 " + client.getNick() +
-              " INVITE MODE JOIN KICK TOPIC MSG NICK QUIT :are supported by "
+              " INVITE MODE JOIN KICK TOPIC PRIVMSG/MSG NICK QUIT :are supported by "
               "this server\r\n";
         send(client.getFd(), msg.c_str(), msg.length(), 0);
 
