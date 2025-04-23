@@ -155,14 +155,26 @@ void Server::receiveData(int clientFd, size_t index) {
 }
 
 void Server::eraseClient(int clientFd, size_t* clientIndex) {
-    for (size_t i = 0; i < _clients.size(); ++i) {
-        if (_clients[i].getFd() == clientFd) {
-            _clients.erase(_clients.begin() + i);
+    (void)clientIndex;
+    std::cout << "Erasing client with FD " << clientFd << std::endl;
+
+    // Find the client index
+    size_t index = 0;
+    for (auto it = _clients.begin(); it != _clients.end(); ++it, ++index) {
+        if (it->getFd() == clientFd) {
+            // Remove the client from _clients vector
+            _clients.erase(it);
+            
+            // Update the client index
+            if (clientIndex)
+                (*clientIndex)--;
+                
             break;
         }
     }
-    if (clientIndex && *clientIndex > 0)
-        (*clientIndex)--;
+    
+    // Remove empty channels
+    removeEmptyChannels();
 }
 
 bool Server::isRegistered(int clientFd) {
@@ -278,4 +290,15 @@ Channel* Server::createOrGetChannel(const std::string& name) {
 
     _channels.push_back(Channel(trimmed));
     return &_channels.back();
+}
+
+// Helper method to safely disconnect a client
+void Server::handleClientDisconnect(int clientFd, size_t* clientIndex) {
+    std::cout << "Disconnecting client with FD " << clientFd << std::endl;
+    
+    // First remove client from all channels
+    removeClientFromChannels(clientFd);
+    
+    // Then erase the client from the _clients vector
+    eraseClient(clientFd, clientIndex);
 }

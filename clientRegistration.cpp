@@ -26,7 +26,9 @@ void Server::registerPassword(Client& client, const std::string& arg,
             send(client.getFd(), msg.c_str(), msg.length(), 0);
             std::cerr << "[WARN] Incorrect password from client fd="
                       << client.getFd() << std::endl;
-            eraseClient(client.getFd(), clientIndex);
+            
+            // Safely disconnect the client
+            handleClientDisconnect(client.getFd(), clientIndex);
         }
     }
 }

@@ -73,6 +73,9 @@ public:
                           const std::string& flag,
                           const std::vector<std::string>& params);
 
+    // Helper method to safely disconnect a client
+    void handleClientDisconnect(int clientFd, size_t* clientIndex);
+
 private:
     int _server_fd;
     int _port;
@@ -83,4 +86,13 @@ private:
     std::vector<pollfd> _poll_fds;
     std::vector<Channel> _channels;
     std::unordered_map<int, std::string> _recvBuffers;
+
+    void parser(std::string arg, std::vector<std::string>& params, char del);
+    
+    // Removes a client from the _clients vector
+    // Note: This does NOT remove the client from channels, 
+    // removeClientFromChannels must be called separately before this
+    void eraseClient(int clientFd, size_t* clientIndex);
+
+    // Regex flags invalid nicknames by matching:
 };
