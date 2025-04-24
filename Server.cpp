@@ -21,8 +21,8 @@
 #include "commands/quit.hpp"
 #include "utils.hpp"
 
-Server::Server(int port, std::string password)
-    : _port(port), _password(password) {
+Server::Server(int port, std::string password, bool debugMode)
+    : _port(port), _password(password), _nextClientId(0), _debugMode(debugMode) {
     _server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (_server_fd < 0) {
         perror("socket");
@@ -156,8 +156,7 @@ void Server::receiveData(int clientFd, size_t index) {
 
 void Server::eraseClient(int clientFd, size_t* clientIndex) {
     (void)clientIndex;
-    std::cout << "[DEBUG] Erasing client with FD " << clientFd << std::endl;
-
+    debugLog("Erasing client with FD " + std::to_string(clientFd));
     // Find the client index
     size_t index = 0;
     for (auto it = _clients.begin(); it != _clients.end(); ++it, ++index) {
@@ -312,5 +311,11 @@ void Server::parser(std::string arg, std::vector<std::string>& params, char del)
     while (std::getline(iss, token, del)) {
         if (!token.empty())
             params.push_back(token);
+    }
+}
+
+void Server::debugLog(const std::string& msg) const {
+    if (_debugMode) {
+        std::cout << "[DEBUG] " << msg << std::endl;
     }
 }

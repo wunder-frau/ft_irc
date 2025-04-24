@@ -10,7 +10,7 @@
 
 class Server {
 public:
-    Server(int port, std::string password);
+    Server(int port, std::string password, bool debugMode);
     Server(const Server& other);
     Server& operator=(const Server& other);
     ~Server();
@@ -68,6 +68,11 @@ public:
 
     // Client disconnect helper
     void handleClientDisconnect(int clientFd, size_t* clientIndex);
+    
+    // Debug helpers
+    bool isDebugMode() const { return _debugMode; }
+    void setDebugMode(bool mode) { _debugMode = mode; }
+    void debugLog(const std::string& msg) const;
 
 private:
     int _server_fd;
@@ -82,8 +87,8 @@ private:
     // New unique client ID counter.
     int _nextClientId;
 
+    // Debug mode flag
+    bool _debugMode;
+
     void parser(std::string arg, std::vector<std::string>& params, char del);
-    
-    // Removes a client from _clients vector (do not duplicate declaration)
-    // void eraseClient(int clientFd, size_t* clientIndex); // (Removed duplicate)
 };

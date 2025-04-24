@@ -20,13 +20,13 @@ void executePrivmsg(Server& server, int clientFd, const std::string& fullMessage
         std::string target = tokens[1];
         std::string message = fullMessage.substr(fullMessage.find(tokens[2]));
 
-        // Debug logs
-        std::cout << "[DEBUG] PRIVMSG - Sender: '" << sender->getNick() << "', Target: '" << target << "'" << std::endl;
+        // Convert debug logs
+        server.debugLog("PRIVMSG - Sender: '" + sender->getNick() + "', Target: '" + target + "'");
         
         // Trim whitespace from target using the common function
         target = trimWhitespace(target);
         
-        std::cout << "[DEBUG] PRIVMSG - After trimming, Target: '" << target << "'" << std::endl;
+        server.debugLog("PRIVMSG - After trimming, Target: '" + target + "'");
 
         // Check if target is a channel
         if (!target.empty() && target[0] == '#')
@@ -67,21 +67,21 @@ void executePrivmsg(Server& server, int clientFd, const std::string& fullMessage
         }
         else
         {
-            // Debug logs
-            std::cout << "[DEBUG] PRIVMSG - Looking for client with nick: '" << target << "'" << std::endl;
-            std::cout << "[DEBUG] PRIVMSG - Sender's nick: '" << sender->getNick() << "'" << std::endl;
+            // Convert debug logs
+            server.debugLog("PRIVMSG - Looking for client with nick: '" + target + "'");
+            server.debugLog("PRIVMSG - Sender's nick: '" + sender->getNick() + "'");
             
             // Print all client nicknames for debugging
-            std::cout << "[DEBUG] PRIVMSG - All client nicknames:" << std::endl;
+            server.debugLog("PRIVMSG - All client nicknames:");
             const std::vector<Client>& clients = server.getClients();
             for (size_t i = 0; i < clients.size(); ++i)
             {
-                std::cout << "[DEBUG]   " << i << ": '" << clients[i].getNick() << "'" << std::endl;
+                server.debugLog("PRIVMSG - " + std::to_string(i) + ": '" + clients[i].getNick() + "'");
                 
                 // Special check for self-messaging - if this is the sender
                 if (clients[i].getFd() == clientFd)
                 {
-                    std::cout << "[DEBUG]   This is the sender (self)" << std::endl;
+                    server.debugLog("PRIVMSG - This is the sender (self)");
                     
                     // If target matches sender's nick (case-insensitive)
                     std::string senderNick = clients[i].getNick();
@@ -97,7 +97,7 @@ void executePrivmsg(Server& server, int clientFd, const std::string& fullMessage
                     
                     if (targetLower == senderLower)
                     {
-                        std::cout << "[DEBUG]   Detected self-message!" << std::endl;
+                        server.debugLog("PRIVMSG - Detected self-message!");
                         // For self-messages, use the sender as recipient
                         std::string msg = ":" + sender->getNick() + "!~" + sender->getUser() + "@" +
                                         sender->getIPa() + " PRIVMSG " + target + " :" + message + "\r\n";

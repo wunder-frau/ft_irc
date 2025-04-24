@@ -1,19 +1,23 @@
 #include "Server.hpp"
-#include <cstdlib> // for std::atoi
+#include <cstdlib>
 #include <iostream>
+#include <string>
 
 int main(int argc, char *argv[])
 {
-    // Check for correct number of arguments
-    if (argc != 3)
+    // optional fourth argument: -debug
+    if (argc < 3 || argc > 4)
     {
-        std::cerr << "Usage: ./ircserv <port> <password>" << std::endl;
+        std::cerr << "Usage: ./ircserv <port> <password> [-debug]" << std::endl;
         return 1;
     }
 
     // Convert port argument to integer
     int port = std::atoi(argv[1]);
     std::string password = argv[2];
+    bool debugMode = false;
+    if (argc == 4 && std::string(argv[3]) == "-debug")
+        debugMode = true;
 
     // Validate port range
     if (port <= 0 || port > 65535)
@@ -24,8 +28,8 @@ int main(int argc, char *argv[])
 
     try
     {
-        // Create and run the server
-        Server server(port, password);
+        // Create and run the server with debugMode set accordingly
+        Server server(port, password, debugMode);
         server.run();
     }
     catch (const std::exception &e)
