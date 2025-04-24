@@ -19,6 +19,7 @@ void executeQuit(Server& server, int clientFd, const std::string& arg)
     std::string message = ":" + client->getNick() + "!~" + client->getUser() + "@" +
                           client->getIPa() + " QUIT :" + reason + "\r\n";
     std::cout << "[QUIT] " << client->getNick() << " has quit: " << reason << std::endl;
+    
     // Broadcast to all channels the client was in
     for (std::vector<Channel>::iterator it = server.getChannels().begin();
          it != server.getChannels().end(); ++it)
@@ -28,16 +29,16 @@ void executeQuit(Server& server, int clientFd, const std::string& arg)
             it->broadcast(message, client);
         }
     }
-
+    
     // Clean up
     try
     {
         size_t clientIndex = server.getClientIndex(clientFd);
-        server.eraseClient(clientFd, &clientIndex);  // Also closes the socket
+        server.handleClientDisconnect(clientFd, &clientIndex);  // Safely remove client
     }
     catch (const std::exception& e)
     {
         std::cerr << "[QUIT] Error removing client: " << e.what() << std::endl;
-        close(clientFd);  // Just in case eraseClient didn't close it
+        close(clientFd);  // Just in case socket wasn't closed
     }
 }

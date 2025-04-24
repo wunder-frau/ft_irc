@@ -21,8 +21,8 @@
 #include "commands/quit.hpp"
 #include "utils.hpp"
 
-Server::Server(int port, std::string password)
-    : _port(port), _password(password) {
+Server::Server(int port, std::string password, bool debugMode)
+    : _port(port), _password(password), _nextClientId(0), _debugMode(debugMode) {
     _server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (_server_fd < 0) {
         perror("socket");
@@ -130,7 +130,7 @@ void Server::receiveData(int clientFd, size_t index) {
     char buffer[1024];
     ssize_t n = recv(clientFd, buffer, sizeof(buffer), 0);
     if (n <= 0) {
-        std::cout << "Client disconnected: fd=" << clientFd << std::endl;
+        std::cout << "[INFO] Client disconnected: fd=" << clientFd << std::endl;
         close(clientFd);
         _recvBuffers.erase(clientFd);
         _poll_fds.erase(_poll_fds.begin() + index);
@@ -155,14 +155,25 @@ void Server::receiveData(int clientFd, size_t index) {
 }
 
 void Server::eraseClient(int clientFd, size_t* clientIndex) {
-    for (size_t i = 0; i < _clients.size(); ++i) {
-        if (_clients[i].getFd() == clientFd) {
-            _clients.erase(_clients.begin() + i);
+    (void)clientIndex;
+    debugLog("Erasing client with FD " + std::to_string(clientFd));
+    // Find the client index
+    size_t index = 0;
+    for (auto it = _clients.begin(); it != _clients.end(); ++it, ++index) {
+        if (it->getFd() == clientFd) {
+            // Remove the client from _clients vector
+            _clients.erase(it);
+            
+            // Update the client index
+            if (clientIndex)
+                (*clientIndex)--;
+                
             break;
         }
     }
-    if (clientIndex && *clientIndex > 0)
-        (*clientIndex)--;
+    
+    // Remove empty channels
+    removeEmptyChannels();
 }
 
 bool Server::isRegistered(int clientFd) {
@@ -278,4 +289,33 @@ Channel* Server::createOrGetChannel(const std::string& name) {
 
     _channels.push_back(Channel(trimmed));
     return &_channels.back();
+}
+
+// Helper method to safely disconnect a client
+void Server::handleClientDisconnect(int clientFd, size_t* clientIndex) {
+    std::cout << "Disconnecting client with FD " << clientFd << std::endl;
+    
+    // First remove client from all channels
+    removeClientFromChannels(clientFd);
+    
+    // Then erase the client from the _clients vector
+    eraseClient(clientFd, clientIndex);
+}
+
+#include <sstream>
+
+// Implementation of the parser function
+void Server::parser(std::string arg, std::vector<std::string>& params, char del) {
+    std::istringstream iss(arg);
+    std::string token;
+    while (std::getline(iss, token, del)) {
+        if (!token.empty())
+            params.push_back(token);
+    }
+}
+
+void Server::debugLog(const std::string& msg) const {
+    if (_debugMode) {
+        std::cout << "[DEBUG] " << msg << std::endl;
+    }
 }

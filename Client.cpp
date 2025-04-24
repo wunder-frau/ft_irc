@@ -16,7 +16,7 @@ Client::Client(int fd, const sockaddr_in& addr)
     inet_ntop(AF_INET, &(addr.sin_addr), ip, INET_ADDRSTRLEN);
     _ipA = ip;
 
-    std::cout << "[INFO] New Client created: fd=" << _fd << ", ip=" << _ipA << std::endl;
+//    std::cout << "[INFO] New Client created: fd=" << _fd << ", ip=" << _ipA << std::endl;
 }
 
 Client::~Client() {}

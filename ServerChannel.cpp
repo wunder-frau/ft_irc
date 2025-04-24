@@ -8,23 +8,20 @@
 // Find a channel by name
 Channel* Server::findChannel(const std::string& name) {
     std::string searchName = trimWhitespace(name);
-    std::cout << "[DEBUG] findChannel - Looking for '" << name << "'"
-              << std::endl;
-    std::cout << "[DEBUG] findChannel - After trimming: '" << searchName << "'"
-              << std::endl;
+    debugLog("findChannel - Looking for '" + name + "'");
+    debugLog("findChannel - After trimming: '" + searchName + "'");
 
     for (size_t i = 0; i < _channels.size(); ++i) {
         std::string channelName = trimWhitespace(_channels[i].getName());
-        std::cout << "[DEBUG] findChannel - Comparing with trimmed: '"
-                  << channelName << "'" << std::endl;
+        debugLog("findChannel - Comparing with trimmed: '" + channelName + "'");
 
         if (channelName == searchName) {
-            std::cout << "[DEBUG] findChannel - Match found!" << std::endl;
+            debugLog("findChannel - Match found!");
             return &_channels[i];
         }
     }
 
-    std::cout << "[DEBUG] findChannel - No match found" << std::endl;
+    debugLog("findChannel - No match found");
     return nullptr;
 }
 
@@ -47,18 +44,16 @@ void Server::createChannel(const std::string& name, Client* creator) {
         return;
 
     std::string channelName = trimWhitespace(name);
-    std::cout << "[DEBUG] Creating new channel with name '" << channelName
-              << "'\n";
+    debugLog("Creating new channel with name '" + channelName + "'");
 
     Channel newChannel(channelName);
     newChannel.addClient(creator);
 
     _channels.push_back(newChannel);
 
-    std::cout << "[DEBUG] Channels after creation:\n";
+    debugLog("Channels after creation:");
     for (size_t i = 0; i < _channels.size(); ++i) {
-        std::cout << "[DEBUG]   " << i << ": '" << _channels[i].getName()
-                  << "'\n";
+        debugLog("  " + std::to_string(i) + ": '" + _channels[i].getName() + "'");
     }
 }
 
@@ -66,8 +61,8 @@ void Server::createChannel(const std::string& name, Client* creator) {
 void Server::removeEmptyChannels() {
     for (size_t i = 0; i < _channels.size();) {
         if (_channels[i].getClients().empty()) {
-            std::cout << "Removing empty channel: " << _channels[i].getName()
-                      << std::endl;
+            // Replace std::cout with debugLog
+            debugLog("Removing empty channel: " + _channels[i].getName());
             _channels.erase(_channels.begin() + i);
         } else {
             ++i;
@@ -92,18 +87,16 @@ void Server::removeClientFromChannels(int clientFd) {
 // JOIN command handler
 void Server::handleJoin(int clientFd, const std::string& arg) {
     Client* client = getClientObjByFd(clientFd);
-    std::cout << "[DEBUG] handleJoin: fd=" << clientFd << ", arg='" << arg
-              << "'\n";
+    debugLog("handleJoin: fd=" + std::to_string(clientFd) + ", arg='" + arg + "'");
 
     if (!client || !client->isRegistered()) {
-        std::cout
-            << "[DEBUG] Client is null or not registered, skipping JOIN.\n";
+        debugLog("Client is null or not registered, skipping JOIN.");
         return;
     }
 
     std::vector<std::string> params;
     parser(arg, params, ' ');
-    std::cout << "[DEBUG] Parsed JOIN params count = " << params.size() << "\n";
+    debugLog("Parsed JOIN params count = " + std::to_string(params.size()));
 
     if (params.size() < 2) {
         std::cout << "[ERROR] Not enough parameters for JOIN command.\n";
@@ -114,23 +107,23 @@ void Server::handleJoin(int clientFd, const std::string& arg) {
 
     std::vector<std::string> channels;
     parser(params[1], channels, ',');
-    std::cout << "[DEBUG] Parsed channels: ";
+    std::string channelsDebug = "Parsed channels: ";
     for (size_t i = 0; i < channels.size(); ++i)
-        std::cout << "'" << channels[i] << "' ";
-    std::cout << "\n";
+        channelsDebug += "'" + channels[i] + "' ";
+    debugLog(channelsDebug);
 
     std::vector<std::string> keys;
     if (params.size() >= 3) {
         parser(params[2], keys, ',');
-        std::cout << "[DEBUG] Parsed keys: ";
+        std::string keysDebug = "Parsed keys: ";
         for (size_t i = 0; i < keys.size(); ++i)
-            std::cout << "'" << keys[i] << "' ";
-        std::cout << "\n";
+            keysDebug += "'" + keys[i] + "' ";
+        debugLog(keysDebug);
     }
 
     for (size_t i = 0; i < channels.size(); ++i) {
         std::string channelName = trimWhitespace(channels[i]);
-        std::cout << "[DEBUG] Processing channel: '" << channelName << "'\n";
+        debugLog("Processing channel: '" + channelName + "'");
 
         if (channelName.empty() || channelName[0] != '#') {
             std::cout << "[ERROR] Invalid channel name: '" << channelName
@@ -144,19 +137,18 @@ void Server::handleJoin(int clientFd, const std::string& arg) {
         Channel* channel = findChannel(channelName);
 
         if (channel) {
-            std::cout << "[DEBUG] Channel found: '" << channelName << "'\n";
+            debugLog("Channel found: '" + channelName + "'");
 
             if (channel->isInviteOnly() &&
                 !channel->isInvited(client->getNick())) {
-                std::cout << "[DEBUG] Channel is invite-only and client not "
-                             "invited.\n";
+                debugLog("Channel is invite-only and client not invited.");
                 sendError(clientFd, "473", client->getNick(),
                           channelName + " :Cannot join channel (+i)");
                 continue;
             }
 
             if (channel->isInChannel(client)) {
-                std::cout << "[DEBUG] Client already in channel, skipping.\n";
+                debugLog("Client already in channel, skipping.");
                 continue;
             }
 
@@ -178,13 +170,11 @@ void Server::handleJoin(int clientFd, const std::string& arg) {
                 continue;
             }
 
-            std::cout << "[DEBUG] Adding client to channel '" << channelName
-                      << "'\n";
+            debugLog("Adding client to channel '" + channelName + "'");
             channel->addClient(client);
 
             if (channel->getClients().size() == 1) {
-                std::cout
-                    << "[DEBUG] First client in channel, assigning operator.\n";
+                debugLog("First client in channel, assigning operator.");
                 channel->addOp(clientFd);
             }
 
@@ -221,8 +211,7 @@ void Server::handleJoin(int clientFd, const std::string& arg) {
             infoMsg += "\r\n";
             send(clientFd, infoMsg.c_str(), infoMsg.length(), 0);
         } else {
-            std::cout << "[DEBUG] Channel not found. Creating channel: '"
-                      << channelName << "'\n";
+            debugLog("Channel not found. Creating channel: '" + channelName + "'");
             createChannel(channelName, client);
 
             std::string joinMsg = ":" + client->getNick() + "!~" +
@@ -335,21 +324,11 @@ void Server::handleInvite(int clientFd, const std::string& arg) {
     std::string targetNick = trimWhitespace(params[1]);
     std::string channelName = trimWhitespace(params[2]);
 
-    // Debug logs to inspect channel name
-    std::cout << "[DEBUG] INVITE - Original params[1]: '" << params[1] << "'"
-              << std::endl;
-    std::cout << "[DEBUG] INVITE - Original params[2]: '" << params[2] << "'"
-              << std::endl;
-    std::cout << "[DEBUG] INVITE - Target nick after trimming: '" << targetNick
-              << "'" << std::endl;
-    std::cout << "[DEBUG] INVITE - Channel name after trimming: '"
-              << channelName << "'" << std::endl;
-
     // Debug log to show all channels
-    std::cout << "[DEBUG] INVITE - All channels:" << std::endl;
+    debugLog("INVITE - All channels:");
     for (size_t i = 0; i < _channels.size(); ++i) {
         std::string name = _channels[i].getName();
-        std::cout << "[DEBUG]   " << i << ": '" << name << "'" << std::endl;
+        debugLog("  " + std::to_string(i) + ": '" + name + "'");
     }
 
     // Find target client
