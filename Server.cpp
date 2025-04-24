@@ -130,7 +130,7 @@ void Server::receiveData(int clientFd, size_t index) {
     char buffer[1024];
     ssize_t n = recv(clientFd, buffer, sizeof(buffer), 0);
     if (n <= 0) {
-        std::cout << "Client disconnected: fd=" << clientFd << std::endl;
+        std::cout << "[INFO] Client disconnected: fd=" << clientFd << std::endl;
         close(clientFd);
         _recvBuffers.erase(clientFd);
         _poll_fds.erase(_poll_fds.begin() + index);
@@ -156,7 +156,7 @@ void Server::receiveData(int clientFd, size_t index) {
 
 void Server::eraseClient(int clientFd, size_t* clientIndex) {
     (void)clientIndex;
-    std::cout << "Erasing client with FD " << clientFd << std::endl;
+    std::cout << "[DEBUG] Erasing client with FD " << clientFd << std::endl;
 
     // Find the client index
     size_t index = 0;
@@ -301,4 +301,16 @@ void Server::handleClientDisconnect(int clientFd, size_t* clientIndex) {
     
     // Then erase the client from the _clients vector
     eraseClient(clientFd, clientIndex);
+}
+
+#include <sstream>
+
+// Implementation of the parser function
+void Server::parser(std::string arg, std::vector<std::string>& params, char del) {
+    std::istringstream iss(arg);
+    std::string token;
+    while (std::getline(iss, token, del)) {
+        if (!token.empty())
+            params.push_back(token);
+    }
 }
