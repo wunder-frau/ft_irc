@@ -60,9 +60,8 @@ void Server::setMode(int clientFd, std::vector<std::string>& params) {
 
 void Server::handleMode(int clientFd, const std::string& arg) {
     Client* client = getClientObjByFd(clientFd);
-    if (!client) {
+    if (!client)
         return;
-    }
 
     std::vector<std::string> params;
     parser(arg, params, ' ');
@@ -74,7 +73,64 @@ void Server::handleMode(int clientFd, const std::string& arg) {
         return;
     }
 
-    std::cout << "[in progress] LOOK here NOW setMode: target='" << params[1]
-              << "'" << std::endl;
-    setMode(clientFd, params);
+    std::string target = params[1];
+
+    std::cout << "[handleMode] Target='" << target << "'" << std::endl;
+
+    // If target starts with #, &, +, ! → it's a channel
+    if (!target.empty() && (target[0] == '#' || target[0] == '&' ||
+                            target[0] == '+' || target[0] == '!')) {
+        setMode(clientFd, params);  // Handle channel modes (+o, +k, etc.)
+    } else {
+        // Target is a nickname (user mode like +i)
+        Client* targetClient = getClientObjByNick(target);
+        if (!targetClient) {
+            sendError(clientFd, "401", client->getNick(),
+                      target + " :No such nick");
+            return;
+        }
+
+        if (params.size() >= 3) {
+            std::string modes = params[2];
+            bool adding = true;  // true = + mode, false = - mode
+
+            for (char mode : modes) {
+                if (mode == '+') {
+                    adding = true;
+                    continue;
+                }
+                if (mode == '-') {
+                    adding = false;
+                    continue;
+                }
+
+                if (mode == 'i') {
+                    if (adding) {
+                        targetClient->setInvisible(true);
+                        std::cout
+                            << "[handleMode] Setting +i (invisible) for user '"
+                            << targetClient->getNick() << "'" << std::endl;
+                    } else {
+                        targetClient->setInvisible(false);
+                        std::cout
+                            << "[handleMode] Removing +i (invisible) for user '"
+                            << targetClient->getNick() << "'" << std::endl;
+                    }
+                } else {
+                    sendError(clientFd, "501", client->getNick(),
+                              ":Unknown mode flag");
+                    return;  // Stop on unknown mode
+                }
+            }
+        } else {
+            sendError(clientFd, "461", client->getNick(),
+                      "MODE :Not enough parameters");
+            return;
+        }
+
+        // Respond to the client: confirm mode change
+        std::string reply = ":" + client->getNick() + " MODE " + target + " " +
+                            params[2] + "\r\n";
+        send(clientFd, reply.c_str(), reply.length(), 0);
+    }
 }

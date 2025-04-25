@@ -33,6 +33,10 @@ public:
     const std::string& getModeKey() const { return _key; }
     bool isKeyed() const { return !_key.empty(); }
 
+    // INVISIBLE for user mode +/-i (irssi)
+    void setInvisible(bool value);
+    bool isInvisible() const;
+
 private:
     std::string _nickname;
     std::string _password;
@@ -41,4 +45,5 @@ private:
     int _fd;
     bool _isRegistered;
     std::string _key;
+    bool _isInvisible;
 };
