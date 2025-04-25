@@ -22,6 +22,7 @@ SOURCES := \
 	commands/privmsg.cpp \
 	commands/join.cpp \
 	commands/mode.cpp \
+	commands/ping.cpp \
 	utils.cpp \
 	ServerChannel.cpp \
 	regexRules.cpp \
@@ -40,6 +41,7 @@ HEADERS := \
 	commands/nick.hpp \
 	commands/join.hpp \
 	commands/mode.cpp \
+	commands/ping.hpp \
 	utils.hpp \
 	regexRules.hpp \
 	modes/ModeHandler.hpp \

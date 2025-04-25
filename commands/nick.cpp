@@ -10,7 +10,7 @@ extern std::regex incorrectRegex;
 // Broadcast nickname change and update the client
 static void broadcastAndUpdateNickname(Server& server, int clientFd, const std::string& newNick)
 {
-    Client* client = server.getClientObjByFd(clientFd);  // ✅ safe access
+    Client* client = server.getClientObjByFd(clientFd);  // safe access
     std::string currentNick = client->getNick();
 
     std::string msg = ":" + currentNick + "!~" + client->getUser() + "@" + client->getIPa() +
@@ -23,9 +23,9 @@ static void broadcastAndUpdateNickname(Server& server, int clientFd, const std::
 // Validate and apply nickname if it's allowed
 static void validateNick(Server& server, int clientFd, const std::string& newNick)
 {
-    Client* client = server.getClientObjByFd(clientFd);  // ✅ no direct vector access
+    Client* client = server.getClientObjByFd(clientFd);  // no direct vector access
     std::string currentNick = client->getNick();
-    
+
     // First, trim whitespace from the nickname
     std::string trimmedNick = trimWhitespace(newNick);
 
@@ -51,7 +51,8 @@ static void validateNick(Server& server, int clientFd, const std::string& newNic
 
     if (!server.isUniqueNick(trimmedNick))
     {
-        sendError(server, clientFd, "433", currentNick, trimmedNick + " :Nickname is already in use");
+        sendError(server, clientFd, "433", currentNick,
+                  trimmedNick + " :Nickname is already in use");
         return;
     }
 
