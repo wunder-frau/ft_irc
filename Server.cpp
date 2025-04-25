@@ -22,7 +22,10 @@
 #include "utils.hpp"
 
 Server::Server(int port, std::string password, bool debugMode)
-    : _port(port), _password(password), _nextClientId(0), _debugMode(debugMode) {
+    : _port(port),
+      _password(password),
+      _nextClientId(0),
+      _debugMode(debugMode) {
     _server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (_server_fd < 0) {
         perror("socket");
@@ -122,7 +125,8 @@ void Server::acceptClient() {
     std::cout << "Accepted client fd: " << client_fd << std::endl;
 
     // Send welcome message to the connecting client
-    std::string welcome = "Welcome to the IRC server. please provide PASS, USER, NICK:\r\n";
+    std::string welcome =
+        "Welcome to the IRC server. please provide PASS, USER, NICK:\r\n";
     send(client_fd, welcome.c_str(), welcome.length(), 0);
 }
 
@@ -163,15 +167,15 @@ void Server::eraseClient(int clientFd, size_t* clientIndex) {
         if (it->getFd() == clientFd) {
             // Remove the client from _clients vector
             _clients.erase(it);
-            
+
             // Update the client index
             if (clientIndex)
                 (*clientIndex)--;
-                
+
             break;
         }
     }
-    
+
     // Remove empty channels
     removeEmptyChannels();
 }
@@ -264,40 +268,33 @@ void Server::dispatchCommand(const std::string& fullMessage, int clientFd) {
 std::vector<Channel>& Server::getChannels() { return _channels; }
 
 Channel* Server::getChannelByName(const std::string& name) {
-    std::string searchName = name;
-    while (!searchName.empty() && std::isspace(searchName.back()))
-        searchName.pop_back();
+    std::string searchKey = normalizeChannelName(trimWhitespace(name));
 
     for (size_t i = 0; i < _channels.size(); ++i) {
-        std::string channelName = _channels[i].getName();
-        while (!channelName.empty() && std::isspace(channelName.back()))
-            channelName.pop_back();
-
-        if (channelName == searchName)
+        if (_channels[i].getNormalizedName() == searchKey)
             return &_channels[i];
     }
     return nullptr;
 }
 
 Channel* Server::createOrGetChannel(const std::string& name) {
-    std::string trimmed = name;
-    while (!trimmed.empty() && std::isspace(trimmed.back())) trimmed.pop_back();
-
+    std::string trimmed = trimWhitespace(name);
     Channel* existing = getChannelByName(trimmed);
     if (existing)
         return existing;
 
-    _channels.push_back(Channel(trimmed));
+    _channels.push_back(
+        Channel(trimmed));  // Channel constructor will store normalized key
     return &_channels.back();
 }
 
 // Helper method to safely disconnect a client
 void Server::handleClientDisconnect(int clientFd, size_t* clientIndex) {
     std::cout << "Disconnecting client with FD " << clientFd << std::endl;
-    
+
     // First remove client from all channels
     removeClientFromChannels(clientFd);
-    
+
     // Then erase the client from the _clients vector
     eraseClient(clientFd, clientIndex);
 }
@@ -305,7 +302,8 @@ void Server::handleClientDisconnect(int clientFd, size_t* clientIndex) {
 #include <sstream>
 
 // Implementation of the parser function
-void Server::parser(std::string arg, std::vector<std::string>& params, char del) {
+void Server::parser(std::string arg, std::vector<std::string>& params,
+                    char del) {
     std::istringstream iss(arg);
     std::string token;
     while (std::getline(iss, token, del)) {

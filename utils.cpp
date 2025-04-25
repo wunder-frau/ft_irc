@@ -45,3 +45,9 @@ std::string trimWhitespace(const std::string& str) {
     }
     return (start > 0) ? result.substr(start) : result;
 }
+
+std::string normalizeChannelName(const std::string& name) {
+    std::string result = name;
+    std::transform(result.begin(), result.end(), result.begin(), ::tolower);
+    return result;
+}
