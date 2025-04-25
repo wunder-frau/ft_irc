@@ -321,15 +321,11 @@ std::vector<Channel>& Server::getChannels() { return _channels; }
 
 Channel* Server::getChannelByName(const std::string& name)
 {
-    std::string searchName = name;
-    while (!searchName.empty() && std::isspace(searchName.back())) searchName.pop_back();
+    std::string searchKey = normalizeChannelName(trimWhitespace(name));
 
     for (size_t i = 0; i < _channels.size(); ++i)
     {
-        std::string channelName = _channels[i].getName();
-        while (!channelName.empty() && std::isspace(channelName.back())) channelName.pop_back();
-
-        if (channelName == searchName)
+        if (_channels[i].getNormalizedName() == searchKey)
             return &_channels[i];
     }
     return nullptr;
@@ -337,14 +333,12 @@ Channel* Server::getChannelByName(const std::string& name)
 
 Channel* Server::createOrGetChannel(const std::string& name)
 {
-    std::string trimmed = name;
-    while (!trimmed.empty() && std::isspace(trimmed.back())) trimmed.pop_back();
-
+    std::string trimmed = trimWhitespace(name);
     Channel* existing = getChannelByName(trimmed);
     if (existing)
         return existing;
 
-    _channels.push_back(Channel(trimmed));
+    _channels.push_back(Channel(trimmed));  // Channel constructor will store normalized key
     return &_channels.back();
 }
 

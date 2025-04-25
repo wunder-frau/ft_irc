@@ -4,6 +4,7 @@
 #include <sys/socket.h>  // for send()
 #include <sstream>
 #include <cctype>
+#include <algorithm>
 
 void parser(const std::string& input, std::vector<std::string>& output, char delimiter)
 {
@@ -54,5 +55,11 @@ std::string toUpperCase(const std::string& str)
     std::string result = str;
     for (size_t i = 0; i < result.size(); ++i)
         result[i] = std::toupper(static_cast<unsigned char>(result[i]));
+    return result;
+}
+std::string normalizeChannelName(const std::string& name)
+{
+    std::string result = name;
+    std::transform(result.begin(), result.end(), result.begin(), ::tolower);
     return result;
 }

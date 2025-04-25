@@ -1,8 +1,8 @@
 
 #include <iostream>
 #include <stdexcept>
-#include <vector>
 #include <string>
+#include <vector>
 
 #include "Channel.hpp"
 #include "Client.hpp"
@@ -10,37 +10,35 @@
 
 // Dummy send() implementation for testing purposes.
 // The 'flags' parameter is unnamed to avoid unused parameter warnings.
-ssize_t send(int socket, const void* buffer, size_t length, int /*flags*/)
-{
+ssize_t send(int socket, const void* buffer, size_t length, int /*flags*/) {
     std::cout << "[Socket " << socket << "] "
               << std::string(static_cast<const char*>(buffer), length);
     return length;
 }
 
-void printHeader(const std::string& title)
-{
+void printHeader(const std::string& title) {
     std::cout << "\n\n" << std::string(80, '=') << std::endl;
     std::cout << "   " << title << std::endl;
     std::cout << std::string(80, '=') << std::endl;
 }
 
-void printChannelMembers(Channel* channel)
-{
-    if (!channel)
-    {
+void printChannelMembers(Channel* channel) {
+    if (!channel) {
         std::cout << "Channel not found!" << std::endl;
         return;
     }
 
     std::cout << "Channel: " << channel->getName() << std::endl;
-    std::cout << "Topic: " << (channel->getTopic().empty() ? "<no topic>" : channel->getTopic())
+    std::cout << "Topic: "
+              << (channel->getTopic().empty() ? "<no topic>"
+                                              : channel->getTopic())
               << std::endl;
-    std::cout << "Invite-only: " << (channel->isInviteOnly() ? "Yes" : "No") << std::endl;
+    std::cout << "Invite-only: " << (channel->isInviteOnly() ? "Yes" : "No")
+              << std::endl;
     std::cout << "Members:" << std::endl;
 
     std::vector<Client*> members = channel->getClients();
-    for (size_t i = 0; i < members.size(); ++i)
-    {
+    for (size_t i = 0; i < members.size(); ++i) {
         std::cout << "  " << (i + 1) << ". " << members[i]->getNick()
                   << (channel->isOperator(members[i]) ? " (operator)" : "")
                   << " [FD: " << members[i]->getFd() << "]" << std::endl;
@@ -48,10 +46,8 @@ void printChannelMembers(Channel* channel)
     std::cout << std::endl;
 }
 
-int main()
-{
-    try
-    {
+int main() {
+    try {
         // Create a Server instance
         Server server(6667, "secret");
 
@@ -94,7 +90,8 @@ int main()
         // TEST 2: Topic Setting
         printHeader("TEST 2: Topic Setting");
         std::cout << "Alice (operator) sets the topic" << std::endl;
-        server.handleTopic(101, "TOPIC #general Welcome to the general channel!");
+        server.handleTopic(101,
+                           "TOPIC #general Welcome to the general channel!");
         printChannelMembers(general);
 
         // TEST 3: Invite-Only Mode
@@ -103,7 +100,8 @@ int main()
         server.handleMode(101, "MODE #general +i");
         printChannelMembers(general);
 
-        std::cout << "Charlie tries to join without invitation (should fail)" << std::endl;
+        std::cout << "Charlie tries to join without invitation (should fail)"
+                  << std::endl;
         server.handleJoin(103, "JOIN #general");
         printChannelMembers(general);
 
@@ -138,43 +136,38 @@ int main()
         printHeader("CHANNEL SUMMARY");
         std::cout << "Channels on the server:" << std::endl;
 
-        if (server.findChannel("#general"))
-        {
+        if (server.findChannel("#general")) {
             std::cout << "- #general exists" << std::endl;
             printChannelMembers(server.findChannel("#general"));
         }
 
-        if (server.findChannel("#random"))
-        {
+        if (server.findChannel("#random")) {
             std::cout << "- #random exists" << std::endl;
             printChannelMembers(server.findChannel("#random"));
         }
 
         // TEST 7: Channel Cleanup
         printHeader("TEST 7: Channel Cleanup");
-        std::cout << "Alice leaves #general (should be removed as it's now empty)" << std::endl;
+        std::cout
+            << "Alice leaves #general (should be removed as it's now empty)"
+            << std::endl;
         server.handlePart(101, "PART #general Goodbye!");
 
         std::cout << "Checking if #general still exists..." << std::endl;
-        if (server.findChannel("#general"))
-        {
+        if (server.findChannel("#general")) {
             std::cout << "- #general still exists!" << std::endl;
-        }
-        else
-        {
-            std::cout << "- #general has been removed (as expected)" << std::endl;
+        } else {
+            std::cout << "- #general has been removed (as expected)"
+                      << std::endl;
         }
 
-        if (server.findChannel("#random"))
-        {
+        if (server.findChannel("#random")) {
             std::cout << "- #random still exists" << std::endl;
             printChannelMembers(server.findChannel("#random"));
         }
 
         std::cout << "\nTest completed successfully!" << std::endl;
-    }
-    catch (const std::exception& e)
-    {
+    } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
         return 1;
     }

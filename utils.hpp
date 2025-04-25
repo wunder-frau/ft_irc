@@ -22,3 +22,4 @@ void sendError(int clientFd, const std::string& errorCode, const std::string& ni
 std::string trimWhitespace(const std::string& str);
 
 std::string toUpperCase(const std::string& str);
+std::string normalizeChannelName(const std::string& name);

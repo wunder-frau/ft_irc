@@ -74,7 +74,9 @@ public:
 
     // KEY
     void setKey(const std::string& k) { _key = k; }
-    const std::string& getKey() const { return _key; }
+    const std::string& getModeKey() const;
+
+    const std::string& getNormalizedName() const;
     bool isKeyed() const { return !_key.empty(); }
 
     // Client‐limit (+l) management. −1 means “no limit”.
@@ -85,6 +87,7 @@ public:
 
 private:
     std::string _name;
+    std::string normalizedName;
     std::string _topic;
     bool _inviteOnly;
     std::vector<int> _ops;  // moderator clients
@@ -92,7 +95,7 @@ private:
     // Using vector for better memory management
     std::vector<Client*> _clients;
     Client* _operator;  // Pointer to the current channel operator.
-
+    std::string displayName;
     // Keep track of invited users (for invite-only channels)
     std::map<std::string, bool> _invited;
 
