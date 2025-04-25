@@ -139,7 +139,13 @@ void Server::handleJoin(int clientFd, const std::string& arg) {
     for (size_t i = 0; i < channels.size(); ++i) {
         std::string channelName = trimWhitespace(channels[i]);
         debugLog("Processing channel: '" + channelName + "'");
-
+        if (channelName.length() > 50) {
+            debugLog("Channel name too long: '" + channelName + "'");
+            sendError(
+                clientFd, "479", client->getNick(),
+                channelName + " :Channel name is too long (max 50 characters)");
+            continue;
+        }
         if (channelName.empty() || channelName[0] != '#') {
             std::cout << "[ERROR] Invalid channel name: '" << channelName
                       << "'\n";
