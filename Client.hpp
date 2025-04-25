@@ -30,7 +30,7 @@ public:
 
     // KEY
     void setKey(const std::string& k) { _key = k; }
-    const std::string& getKey() const { return _key; }
+    const std::string& getModeKey() const { return _key; }
     bool isKeyed() const { return !_key.empty(); }
 
 private:

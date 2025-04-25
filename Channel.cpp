@@ -4,6 +4,7 @@
 #include <iostream>
 
 #include "Client.hpp"
+#include "utils.hpp"
 #ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -13,6 +14,7 @@
 
 Channel::Channel()
     : _name(""),
+      normalizedName(""),
       _topic(""),
       _inviteOnly(false),
       _ops(),
@@ -25,6 +27,7 @@ Channel::Channel()
 
 Channel::Channel(const std::string& name)
     : _name(name),
+      normalizedName(normalizeChannelName(name)),
       _topic(""),
       _inviteOnly(false),
       _ops(),
@@ -39,6 +42,7 @@ Channel::~Channel() {}
 
 Channel::Channel(const Channel& other)
     : _name(other._name),
+      normalizedName(other.normalizedName),
       _topic(other._topic),
       _inviteOnly(other._inviteOnly),
       _ops(other._ops),
@@ -52,6 +56,7 @@ Channel::Channel(const Channel& other)
 Channel& Channel::operator=(const Channel& other) {
     if (this != &other) {
         _name = other._name;
+        normalizedName = other.normalizedName;
         _topic = other._topic;
         _inviteOnly = other._inviteOnly;
         _ops = other._ops;
@@ -153,8 +158,8 @@ bool Channel::kick(Client* sender, Client* target) {
 
 // INFO: Log the clients in the channel.
 void Channel::logClients() const {
-    std::cout << "[INFO] Channel: '" << _name << "' has "
-              << _clients.size() << " clients:\n";
+    std::cout << "[INFO] Channel: '" << _name << "' has " << _clients.size()
+              << " clients:\n";
     for (size_t i = 0; i < _clients.size(); ++i) {
         Client* c = _clients[i];
         if (!c) {
@@ -183,8 +188,8 @@ void Channel::broadcast(const std::string& message, Client* except) {
         std::cout << ", nick='" << member->getNick() << "', fd=" << fd << "\n";
 
         if (member == except) {
-            std::cout << "[INFO] skipping sender '"
-                      << member->getNick() << "'\n";
+            std::cout << "[INFO] skipping sender '" << member->getNick()
+                      << "'\n";
             continue;
         }
 
@@ -215,3 +220,6 @@ bool Channel::isTopicRestricted() const { return _topicRestricted; }
 void Channel::removeOp(int clientFd) {
     _ops.erase(std::remove(_ops.begin(), _ops.end(), clientFd), _ops.end());
 }
+
+const std::string& Channel::getNormalizedName() const { return normalizedName; }
+const std::string& Channel::getModeKey() const { return _key; }
