@@ -1,0 +1,41 @@
+# Ignore object files and executable
+*.o
+*.obj
+*.exe
+*.out
+*.log
+*.a
+*.exe
+*.dll
+
+# VS Code project settings
+.vscode/
+.clang-format
+
+# Build artifacts
+ircserv
+client
+
+# Windows-specific files
+Thumbs.db
+Desktop.ini
+
+# Mac (на всякий случай, если работаешь на разных машинах)
+.DS_Store
+
+# CMake/Make
+build/
+CMakeFiles/
+CMakeCache.txt
+Makefile
+
+# Editor swap/backup files
+*~
+*.swp
+*.swo
+
+# Ignore *.md files
+*.md
+
+# Ignore everything except README.md
+!README.md
