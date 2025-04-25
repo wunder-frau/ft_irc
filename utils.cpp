@@ -57,9 +57,31 @@ std::string toUpperCase(const std::string& str)
         result[i] = std::toupper(static_cast<unsigned char>(result[i]));
     return result;
 }
-std::string normalizeChannelName(const std::string& name)
+std::string normalizeChannelName(const std::string& name) { return ircCaseFold(name); }
+
+std::string ircCaseFold(const std::string& input)
 {
-    std::string result = name;
-    std::transform(result.begin(), result.end(), result.begin(), ::tolower);
+    std::string result = input;
+    for (size_t i = 0; i < result.length(); ++i)
+    {
+        switch (result[i])
+        {
+            case '{':
+                result[i] = '[';
+                break;
+            case '}':
+                result[i] = ']';
+                break;
+            case '|':
+                result[i] = '\\';
+                break;
+            case '^':
+                result[i] = '~';
+                break;
+            default:
+                result[i] = std::tolower(result[i]);
+                break;
+        }
+    }
     return result;
 }

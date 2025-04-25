@@ -19,6 +19,7 @@
 #include "commands/notice.hpp"
 #include "commands/privmsg.hpp"
 #include "commands/quit.hpp"
+#include "commands/ping.hpp"
 #include "utils.hpp"
 
 Server::Server(int port, std::string password, bool debugMode)
@@ -233,9 +234,10 @@ Client* Server::getClientObjByFd(int fd)
 
 Client* Server::getClientObjByNick(const std::string& nick)
 {
+    std::string target = ircCaseFold(nick);
     for (auto it = _clients.begin(); it != _clients.end(); ++it)
     {
-        if (it->getNick() == nick)
+        if (ircCaseFold(it->getNick()) == target)
             return &(*it);
     }
     return nullptr;
@@ -310,6 +312,10 @@ void Server::dispatchCommand(const std::string& fullMessage, int clientFd)
         {
             handleInvite(clientFd, line);
         }
+        else if (command == "PING")
+        {
+            executePing(*this, clientFd, line);
+        }
         else
         {
             sendError(clientFd, "421", command, ":Unknown command");
@@ -321,11 +327,11 @@ std::vector<Channel>& Server::getChannels() { return _channels; }
 
 Channel* Server::getChannelByName(const std::string& name)
 {
-    std::string searchKey = normalizeChannelName(trimWhitespace(name));
+    std::string searchKey = ircCaseFold(trimWhitespace(name));
 
     for (size_t i = 0; i < _channels.size(); ++i)
     {
-        if (_channels[i].getNormalizedName() == searchKey)
+        if (ircCaseFold(_channels[i].getName()) == searchKey)
             return &_channels[i];
     }
     return nullptr;

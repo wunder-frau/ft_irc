@@ -23,3 +23,4 @@ std::string trimWhitespace(const std::string& str);
 
 std::string toUpperCase(const std::string& str);
 std::string normalizeChannelName(const std::string& name);
+std::string ircCaseFold(const std::string& input);
